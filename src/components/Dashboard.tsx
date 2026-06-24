@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Info,
   Check,
-  Zap
+  Zap,
+  Wrench,
+  Ban
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -67,6 +69,15 @@ export default function Dashboard({
   // Separate notifications based on role for clean display
   // e.g. Admin sees admin-centric audit alerts, Pemohon sees scheduling approval confirmations
   const visibleNotifications = notifications.slice(0, 5); // Limit to top 5 recent announcements
+
+  const getTodayBooking = (vehicleId: string) => {
+    return bookings.find(b => {
+      return b.kendaraan_id === vehicleId &&
+             b.status === 'Disetujui' && 
+             TODAY_STR >= b.tanggal_mulai && 
+             TODAY_STR <= b.tanggal_selesai;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -301,6 +312,118 @@ export default function Dashboard({
               })}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* SEKSI DAFTAR KENDARAAN & STATUS REAL-TIME */}
+      <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-sm p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+          <div className="flex items-center gap-2">
+            <div className="bg-[#E7F3EF] dark:bg-[#0F8A5F]/20 p-2 rounded-xl text-scb-green dark:text-emerald-400">
+              <Car className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <h3 className="font-bold text-sm text-neutral-800 dark:text-neutral-100">Status Ketersediaan Armada Hari Ini</h3>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Status real-time armada Sekolah Cendekia BAZNAS tanggal {TODAY_STR}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse inline-block" /> Tersedia
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse inline-block" /> Sedang Digunakan
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {vehicles.map((v) => {
+            const todayBooking = getTodayBooking(v.id);
+            
+            // Determine active/dynamic status
+            let activeStatus: 'Tersedia' | 'Sedang Digunakan' | 'Dalam Perbaikan' | 'Nonaktif' = 'Tersedia';
+            if (v.status === 'Dalam Perbaikan') {
+              activeStatus = 'Dalam Perbaikan';
+            } else if (v.status === 'Nonaktif') {
+              activeStatus = 'Nonaktif';
+            } else if (todayBooking) {
+              activeStatus = 'Sedang Digunakan';
+            }
+
+            return (
+              <div 
+                key={v.id} 
+                className="group bg-white dark:bg-neutral-850 rounded-2xl border border-gray-150 dark:border-neutral-800/80 p-4 transition-all duration-200 hover:shadow-md hover:border-scb-green/25 dark:hover:border-emerald-500/25 flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  {/* Header: Name and Plate */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5 text-left">
+                      <h4 className="font-extrabold text-xs text-neutral-800 dark:text-neutral-200 group-hover:text-scb-green dark:group-hover:text-emerald-400 transition-colors line-clamp-1">{v.nama_kendaraan}</h4>
+                      <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono tracking-wider font-extrabold">{v.nomor_polisi}</p>
+                    </div>
+                    
+                    {/* Dynamic Badge */}
+                    <span className={`inline-flex items-center gap-1 text-[9px] uppercase font-black px-2.5 py-1 rounded-full border shrink-0 ${
+                      activeStatus === 'Tersedia' 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/40'
+                        : activeStatus === 'Sedang Digunakan'
+                        ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/40'
+                        : activeStatus === 'Dalam Perbaikan'
+                        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/40'
+                        : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/40'
+                    }`}>
+                      {activeStatus === 'Tersedia' && <CheckCircle2 className="w-3 h-3" />}
+                      {activeStatus === 'Sedang Digunakan' && <Clock className="w-3 h-3 animate-pulse" />}
+                      {activeStatus === 'Dalam Perbaikan' && <Wrench className="w-3 h-3" />}
+                      {activeStatus === 'Nonaktif' && <Ban className="w-3 h-3" />}
+                      {activeStatus}
+                    </span>
+                  </div>
+
+                  {/* Specs: Type & Capacity */}
+                  <div className="flex items-center justify-between text-[10px] text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900/50 rounded-xl px-3 py-2 font-semibold">
+                    <span className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
+                      <Car className="w-3.5 h-3.5 opacity-60" /> {v.jenis}
+                    </span>
+                    <span className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
+                      <Users className="w-3.5 h-3.5 opacity-60" /> {v.kapasitas} Kursi
+                    </span>
+                  </div>
+                </div>
+
+                {/* Extra dynamic description */}
+                <div className="mt-3.5 pt-3 border-t border-dashed border-neutral-150 dark:border-neutral-800 text-left">
+                  {activeStatus === 'Tersedia' && (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> Siap digunakan untuk dinas/operasional.
+                    </p>
+                  )}
+                  {activeStatus === 'Sedang Digunakan' && todayBooking && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 shrink-0" /> Aktif: {todayBooking.jam_mulai} - {todayBooking.jam_selesai} WIB
+                      </p>
+                      <p className="text-[9.5px] text-neutral-500 dark:text-neutral-400 font-medium leading-relaxed line-clamp-1">
+                        Acara: {todayBooking.kegiatan}
+                      </p>
+                    </div>
+                  )}
+                  {activeStatus === 'Dalam Perbaikan' && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-500 font-bold flex items-center gap-1">
+                      <Wrench className="w-3.5 h-3.5 shrink-0" /> Sedang dalam perawatan berkala/bengkel.
+                    </p>
+                  )}
+                  {activeStatus === 'Nonaktif' && (
+                    <p className="text-[10px] text-red-500 dark:text-red-400 font-bold flex items-center gap-1">
+                      <Ban className="w-3.5 h-3.5 shrink-0" /> Armada dinonaktifkan sementara dari sistem.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -420,30 +420,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* Informational Role Indicator banner overlay */}
-        <div className="bg-[#0F8A5F]/5 dark:bg-[#0F8A5F]/10 border-y border-[#0F8A5F]/15 dark:border-[#0F8A5F]/20 px-6 py-2.5 flex items-center justify-between text-xs text-slate-700 dark:text-neutral-300 font-semibold">
-          <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#0F8A5F] shrink-0" />
-            <span>Sesi aktif: <strong className="text-neutral-900 dark:text-neutral-100">{activeUser.nama}</strong> • Hak akses: <strong className="text-[#0F8A5F] dark:text-[#E7F3EF] uppercase font-extrabold">{currentRole}</strong> • {currentUser?.role === 'Admin' ? 'Anda login sebagai Super Admin (Dapat memverifikasi/menolak ajuan).' : 'Masuk sebagai Super Admin untuk memverifikasi/menyetujui ajuan.'}</span>
-          </div>
-          {!currentUser ? (
-            <button
-              type="button"
-              onClick={() => setCurrentTab('login')}
-              className="text-xs text-[#0F8A5F] dark:text-[#E7F3EF] hover:underline font-bold cursor-pointer"
-            >
-              Masuk Super Admin &rarr;
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin')}
-              className="text-xs text-[#0F8A5F] dark:text-[#E7F3EF] hover:underline font-bold cursor-pointer"
-            >
-              Simulasi: {currentRole === 'Admin' ? 'Lihat Pemohon' : 'Lihat Admin'}
-            </button>
-          )}
-        </div>
+
 
         {/* Dynamic Inner Tab Router */}
         <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8">
