@@ -139,29 +139,7 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* User Role Switcher Widget */}
-        <div className="p-4 mx-4 mt-5 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-800 shadow-sm shrink-0">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <span className="text-xs font-semibold text-gray-500 dark:text-neutral-400 tracking-wider uppercase">Hak Akses Aktif</span>
-            <span className={`inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-              currentRole === 'Admin' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400' : 'bg-scb-light-green text-scb-green dark:bg-emerald-950/60 dark:text-emerald-400'
-            }`}>
-              {currentRole === 'Admin' ? <Users className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
-              {currentRole}
-            </span>
-          </div>
-          
-          <button
-            type="button"
-            onClick={toggleRole}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 text-scb-green dark:text-emerald-400 hover:bg-scb-light-green dark:hover:bg-neutral-750 border border-gray-150 dark:border-neutral-700 active:scale-[98%] font-semibold text-xs rounded-lg transition-all shadow-sm cursor-pointer animate-pulse"
-          >
-            {currentUser && currentUser.role === 'Admin' 
-              ? `Simulasi: ${currentRole === 'Admin' ? 'Mode Pemohon' : 'Mode Admin'}`
-              : 'Login Super Admin'
-            }
-          </button>
-        </div>
+
 
         {/* Navigation Items */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
