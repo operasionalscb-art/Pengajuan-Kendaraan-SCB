@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Vehicle, Booking, BookingStatus, UserProfile } from '../types';
 import { checkBookingConflict, parseDateTime } from '../utils/bookingUtils';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Car, 
   Clock, 
@@ -12,7 +13,10 @@ import {
   Trash2, 
   CheckCircle2, 
   AlertTriangle,
-  FileText
+  FileText,
+  CalendarCheck2,
+  BookmarkCheck,
+  Check
 } from 'lucide-react';
 
 interface BookingFormProps {
@@ -53,6 +57,39 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
   const [conflictWarning, setConflictWarning] = useState('');
   const [generalError, setGeneralError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Success Popup state
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submittedBookingData, setSubmittedBookingData] = useState<{
+    kegiatan: string;
+    kendaraan: string;
+    tanggal: string;
+    jam: string;
+    status: string;
+    penanggungJawab: string;
+  } | null>(null);
+
+  const handleClosePopup = () => {
+    setShowSuccessPopup(false);
+    setSubmittedBookingData(null);
+    setSuccessMsg('');
+    setSelectedVehicleId('');
+    setTanggalMulai('');
+    setTanggalSelesai('');
+    if (currentUser) {
+      setPenanggungJawab(currentUser.nama);
+      setJabatan(currentUser.jabatan);
+    } else {
+      setPenanggungJawab('');
+      setJabatan('');
+    }
+    setKegiatan('');
+    setTujuan('');
+    setKeteranganTambahan('');
+    setJumlahPenumpang(1);
+    setDaftarPenumpang(['']);
+    onSuccess();
+  };
 
   // Find currently selected vehicle
   const activeVehicle = vehicles.find(v => v.id === selectedVehicleId);
@@ -213,23 +250,15 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
     }, asStatus);
 
     if (result.success) {
-      setSuccessMsg(asStatus === 'Draft' ? 'Pengajuan berhasil disimpan sebagai DRAFT.' : 'Pengajuan berhasil terkirim dan menunggu persetujuan admin!');
-      
-      // Reset form variables
-      setTimeout(() => {
-        setSuccessMsg('');
-        setSelectedVehicleId('');
-        setTanggalMulai('');
-        setTanggalSelesai('');
-        setPenanggungJawab('');
-        setJabatan('');
-        setKegiatan('');
-        setTujuan('');
-        setKeteranganTambahan('');
-        setJumlahPenumpang(1);
-        setDaftarPenumpang(['']);
-        onSuccess();
-      }, 1800);
+      setSubmittedBookingData({
+        kegiatan: kegiatan.trim(),
+        kendaraan: activeVehicle?.nama_kendaraan || 'Kendaraan Operasional',
+        tanggal: tanggalMulai === tanggalSelesai ? tanggalMulai : `${tanggalMulai} - ${tanggalSelesai}`,
+        jam: `${jamMulai} - ${jamSelesai} WIB`,
+        status: asStatus === 'Draft' ? 'Draft' : 'Menunggu Persetujuan',
+        penanggungJawab: penanggungJawab.trim()
+      });
+      setShowSuccessPopup(true);
     } else {
       setGeneralError(result.message);
     }
@@ -540,6 +569,87 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
           </div>
         </form>
       </div>
+
+      {/* SUCCESS OVERLAY POPUP NOTIFICATION */}
+      <AnimatePresence>
+        {showSuccessPopup && submittedBookingData && (
+          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-100 dark:border-neutral-800 p-6 sm:p-8 max-w-md w-full overflow-hidden text-center space-y-6 relative"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-emerald-500/5 rounded-full blur-2xl -z-10" />
+
+              <div className="flex flex-col items-center space-y-3">
+                <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/30 text-[#0F8A5F] dark:text-emerald-450 rounded-full flex items-center justify-center shadow-inner relative">
+                  <div className="absolute inset-0 bg-emerald-400/10 rounded-full animate-ping opacity-75" />
+                  {submittedBookingData.status === 'Draft' ? (
+                    <BookmarkCheck className="w-8 h-8 relative" />
+                  ) : (
+                    <CalendarCheck2 className="w-8 h-8 relative" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-neutral-800 dark:text-neutral-100 tracking-tight">
+                    {submittedBookingData.status === 'Draft' ? 'Draft Berhasil Disimpan!' : 'Pengajuan Berhasil Terkirim!'}
+                  </h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-medium">
+                    {submittedBookingData.status === 'Draft' 
+                      ? 'Draf pengajuan Anda berhasil dicatat dalam sistem.' 
+                      : 'Permohonan peminjaman kendaraan Anda menunggu tinjauan admin.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-neutral-50 dark:bg-neutral-850 rounded-2xl border border-neutral-100 dark:border-neutral-800 p-4 text-left text-xs space-y-3 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-2">
+                  <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                    submittedBookingData.status === 'Draft' 
+                      ? 'bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300' 
+                      : 'bg-yellow-100 text-yellow-850 dark:bg-yellow-950/30 dark:text-yellow-400'
+                  }`}>
+                    {submittedBookingData.status}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider block">Kegiatan</span>
+                  <p className="font-extrabold text-neutral-800 dark:text-neutral-200 line-clamp-2 leading-tight">{submittedBookingData.kegiatan}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider block">Kendaraan</span>
+                    <p className="font-bold text-neutral-700 dark:text-neutral-300 truncate">{submittedBookingData.kendaraan}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider block">P. Jawab</span>
+                    <p className="font-bold text-neutral-700 dark:text-neutral-300 truncate">{submittedBookingData.penanggungJawab}</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-neutral-500 dark:text-neutral-400 font-bold text-[10px]">
+                  <span>{submittedBookingData.tanggal}</span>
+                  <span>{submittedBookingData.jam}</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleClosePopup}
+                  className="w-full py-3 bg-[#0F8A5F] hover:bg-[#0a6344] text-white font-extrabold text-sm rounded-2xl transition duration-150 shadow-lg shadow-[#0F8A5F]/20 active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" /> Oke, Selesai
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
