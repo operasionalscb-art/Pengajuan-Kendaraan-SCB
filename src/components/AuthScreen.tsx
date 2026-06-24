@@ -616,10 +616,6 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     id="input-register-email"
                   />
                 </div>
-                <div className="p-2.5 bg-blue-50/80 dark:bg-blue-950/20 rounded-lg text-[10px] text-blue-700 dark:text-blue-400 font-semibold border border-blue-100 dark:border-blue-900/30 flex items-start gap-1.5 leading-normal mt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
-                  <span>Daftarkan email <strong className="text-blue-805 dark:text-blue-300">operasional.scb@gmail.com</strong> sebagai <strong>Super Admin Sarpras</strong>.</span>
-                </div>
               </div>
 
               <div className="space-y-1.5 text-left">
