@@ -26,7 +26,7 @@ interface BookingHistoryProps {
   currentRole: AppRole;
   onUpdateStatus: (bookingId: string, newStatus: BookingStatus) => void;
   onDeleteBooking: (bookingId: string) => void;
-  onUpdateBookingTime: (bookingId: string, tanggalMulai: string, jamMulai: string, tanggalSelesai: string, jamSelesai: string) => { success: boolean; message: string };
+  onUpdateBookingTime: (bookingId: string, tanggalMulai: string, jamMulai: string, tanggalSelesai: string, jamSelesai: string) => { success: boolean; message: string } | Promise<{ success: boolean; message: string }>;
 }
 
 export default function BookingHistory({
@@ -125,7 +125,7 @@ export default function BookingHistory({
     setEditConflictErr('');
   };
 
-  const handleSaveEditTime = () => {
+  const handleSaveEditTime = async () => {
     if (!editingBooking) return;
     setEditConflictErr('');
 
@@ -146,18 +146,23 @@ export default function BookingHistory({
       return;
     }
 
-    const res = onUpdateBookingTime(
-      editingBooking.id,
-      editTanggalMulai,
-      editJamMulai,
-      editTanggalSelesai,
-      editJamSelesai
-    );
+    try {
+      const res = await onUpdateBookingTime(
+        editingBooking.id,
+        editTanggalMulai,
+        editJamMulai,
+        editTanggalSelesai,
+        editJamSelesai
+      );
 
-    if (res.success) {
-      setEditingBooking(null);
-    } else {
-      setEditConflictErr(res.message);
+      if (res.success) {
+        setEditingBooking(null);
+      } else {
+        setEditConflictErr(res.message);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setEditConflictErr(`Gagal memperbarui waktu: ${err.message || err}`);
     }
   };
 

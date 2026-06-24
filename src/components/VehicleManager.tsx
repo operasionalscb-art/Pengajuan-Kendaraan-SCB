@@ -18,9 +18,9 @@ import {
 
 interface VehicleManagerProps {
   vehicles: Vehicle[];
-  onAddVehicle: (newVehicle: Omit<Vehicle, 'id'>) => void;
-  onUpdateVehicle: (updatedVehicle: Vehicle) => void;
-  onDeleteVehicle: (vehicleId: string) => void;
+  onAddVehicle: (newVehicle: Omit<Vehicle, 'id'>) => Promise<boolean>;
+  onUpdateVehicle: (updatedVehicle: Vehicle) => Promise<boolean>;
+  onDeleteVehicle: (vehicleId: string) => Promise<boolean>;
 }
 
 export default function VehicleManager({
@@ -52,7 +52,7 @@ export default function VehicleManager({
     setFormError('');
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
 
@@ -69,19 +69,27 @@ export default function VehicleManager({
       return;
     }
 
-    onAddVehicle({
-      nama_kendaraan: namaKendaraan.trim(),
-      nomor_polisi: nomorPolisi.trim().toUpperCase(),
-      jenis,
-      kapasitas,
-      status
-    });
+    try {
+      const success = await onAddVehicle({
+        nama_kendaraan: namaKendaraan.trim(),
+        nomor_polisi: nomorPolisi.trim().toUpperCase(),
+        jenis,
+        kapasitas,
+        status
+      });
 
-    setSuccessInfo('Kendaraan baru berhasil ditambahkan ke database!');
-    resetForm();
-    setIsAdding(false);
-
-    setTimeout(() => setSuccessInfo(''), 2000);
+      if (success) {
+        setSuccessInfo('Kendaraan baru berhasil ditambahkan ke database!');
+        resetForm();
+        setIsAdding(false);
+        setTimeout(() => setSuccessInfo(''), 2000);
+      } else {
+        setFormError('Gagal menyimpan kendaraan ke database server. Pastikan Anda memiliki hak akses.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setFormError(`Terjadi kesalahan: ${err.message || err}`);
+    }
   };
 
   const handleStartEdit = (v: Vehicle) => {
@@ -94,7 +102,7 @@ export default function VehicleManager({
     setFormError('');
   };
 
-  const handleSaveEdit = (e: React.FormEvent, id: string) => {
+  const handleSaveEdit = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     setFormError('');
 
@@ -107,20 +115,28 @@ export default function VehicleManager({
       return;
     }
 
-    onUpdateVehicle({
-      id,
-      nama_kendaraan: namaKendaraan.trim(),
-      nomor_polisi: nomorPolisi.trim().toUpperCase(),
-      jenis,
-      kapasitas,
-      status
-    });
+    try {
+      const success = await onUpdateVehicle({
+        id,
+        nama_kendaraan: namaKendaraan.trim(),
+        nomor_polisi: nomorPolisi.trim().toUpperCase(),
+        jenis,
+        kapasitas,
+        status
+      });
 
-    setSuccessInfo('Data kendaraan berhasil diperbarui.');
-    setEditingId(null);
-    resetForm();
-
-    setTimeout(() => setSuccessInfo(''), 2000);
+      if (success) {
+        setSuccessInfo('Data kendaraan berhasil diperbarui.');
+        setEditingId(null);
+        resetForm();
+        setTimeout(() => setSuccessInfo(''), 2000);
+      } else {
+        setFormError('Gagal memperbarui kendaraan di database server. Pastikan Anda memiliki hak akses.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setFormError(`Terjadi kesalahan: ${err.message || err}`);
+    }
   };
 
   const statusIcons = (s: VehicleStatus) => {

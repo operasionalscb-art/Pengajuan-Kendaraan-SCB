@@ -22,7 +22,7 @@ import {
 interface BookingFormProps {
   vehicles: Vehicle[];
   bookings: Booking[];
-  onSubmitBooking: (booking: Omit<Booking, 'id' | 'created_at'>, asStatus: BookingStatus) => { success: boolean; message: string };
+  onSubmitBooking: (booking: Omit<Booking, 'id' | 'created_at'>, asStatus: BookingStatus) => { success: boolean; message: string } | Promise<{ success: boolean; message: string }>;
   onSuccess: () => void;
   currentUser?: UserProfile | null;
 }
@@ -168,7 +168,7 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
   };
 
   // Form Submission
-  const handleSubmit = (asStatus: BookingStatus) => {
+  const handleSubmit = async (asStatus: BookingStatus) => {
     setGeneralError('');
     setSuccessMsg('');
 
@@ -233,34 +233,39 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
     const filteredPassengers = daftarPenumpang.filter(p => p.trim() !== '');
 
     // Submit
-    const result = onSubmitBooking({
-      kendaraan_id: selectedVehicleId,
-      tanggal_mulai: tanggalMulai,
-      tanggal_selesai: tanggalSelesai,
-      jam_mulai: jamMulai,
-      jam_selesai: jamSelesai,
-      penanggung_jawab: penanggungJawab.trim(),
-      jabatan: jabatan.trim() || 'Pegawai SCB',
-      kegiatan: kegiatan.trim(),
-      tujuan: tujuan.trim(),
-      jumlah_penumpang: jumlahPenumpang,
-      daftar_penumpang: filteredPassengers.length > 0 ? filteredPassengers : [penanggungJawab.trim()],
-      status: asStatus,
-      keterangan_tambahan: keteranganTambahan.trim()
-    }, asStatus);
-
-    if (result.success) {
-      setSubmittedBookingData({
+    try {
+      const result = await onSubmitBooking({
+        kendaraan_id: selectedVehicleId,
+        tanggal_mulai: tanggalMulai,
+        tanggal_selesai: tanggalSelesai,
+        jam_mulai: jamMulai,
+        jam_selesai: jamSelesai,
+        penanggung_jawab: penanggungJawab.trim(),
+        jabatan: jabatan.trim() || 'Pegawai SCB',
         kegiatan: kegiatan.trim(),
-        kendaraan: activeVehicle?.nama_kendaraan || 'Kendaraan Operasional',
-        tanggal: tanggalMulai === tanggalSelesai ? tanggalMulai : `${tanggalMulai} - ${tanggalSelesai}`,
-        jam: `${jamMulai} - ${jamSelesai} WIB`,
-        status: asStatus === 'Draft' ? 'Draft' : 'Menunggu Persetujuan',
-        penanggungJawab: penanggungJawab.trim()
-      });
-      setShowSuccessPopup(true);
-    } else {
-      setGeneralError(result.message);
+        tujuan: tujuan.trim(),
+        jumlah_penumpang: jumlahPenumpang,
+        daftar_penumpang: filteredPassengers.length > 0 ? filteredPassengers : [penanggungJawab.trim()],
+        status: asStatus,
+        keterangan_tambahan: keteranganTambahan.trim()
+      }, asStatus);
+
+      if (result.success) {
+        setSubmittedBookingData({
+          kegiatan: kegiatan.trim(),
+          kendaraan: activeVehicle?.nama_kendaraan || 'Kendaraan Operasional',
+          tanggal: tanggalMulai === tanggalSelesai ? tanggalMulai : `${tanggalMulai} - ${tanggalSelesai}`,
+          jam: `${jamMulai} - ${jamSelesai} WIB`,
+          status: asStatus === 'Draft' ? 'Draft' : 'Menunggu Persetujuan',
+          penanggungJawab: penanggungJawab.trim()
+        });
+        setShowSuccessPopup(true);
+      } else {
+        setGeneralError(result.message);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setGeneralError(`Terjadi kesalahan saat menyimpan data: ${err.message || err}`);
     }
   };
 

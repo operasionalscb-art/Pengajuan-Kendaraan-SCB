@@ -46,25 +46,32 @@ export default function App() {
 
   // Seed database and set up subscriptions
   useEffect(() => {
+    let active = true;
+    let unsubVehicles: (() => void) | null = null;
+    let unsubBookings: (() => void) | null = null;
+    let unsubNotifs: (() => void) | null = null;
+
     seedInitialData().then(() => {
-      const unsubVehicles = subscribeVehicles((data) => {
+      if (!active) return;
+      unsubVehicles = subscribeVehicles((data) => {
         setVehicles(data);
       });
-      const unsubBookings = subscribeBookings((data) => {
+      unsubBookings = subscribeBookings((data) => {
         setBookings(data);
       });
-      const unsubNotifs = subscribeNotifications((data) => {
+      unsubNotifs = subscribeNotifications((data) => {
         setNotifications(data);
       });
-
-      return () => {
-        unsubVehicles();
-        unsubBookings();
-        unsubNotifs();
-      };
     }).catch((err) => {
       console.error('Error seeding/subscribing to Firestore:', err);
     });
+
+    return () => {
+      active = false;
+      if (unsubVehicles) unsubVehicles();
+      if (unsubBookings) unsubBookings();
+      if (unsubNotifs) unsubNotifs();
+    };
   }, []);
 
   // User session state
@@ -171,10 +178,10 @@ export default function App() {
 
 
   // 2. Booking CRUD handlers
-  const handleAddBooking = (
+  const handleAddBooking = async (
     newBooking: Omit<Booking, 'id' | 'created_at'>, 
     asStatus: BookingStatus
-  ): { success: boolean; message: string } => {
+  ): Promise<{ success: boolean; message: string }> => {
     const generatedId = `B-${Date.now()}`;
     const fullBooking: Booking = {
       ...newBooking,
@@ -182,7 +189,9 @@ export default function App() {
       created_at: new Date().toISOString()
     };
 
-    addOrUpdateBooking(fullBooking).then(() => {
+    try {
+      await addOrUpdateBooking(fullBooking);
+      
       // Send visual notification card
       const targetVehicle = vehicles.find(v => v.id === newBooking.kendaraan_id);
       if (asStatus === 'Draft') {
@@ -198,9 +207,11 @@ export default function App() {
           'warning'
         );
       }
-    }).catch(console.error);
-
-    return { success: true, message: 'Booking successfully added!' };
+      return { success: true, message: 'Booking successfully added!' };
+    } catch (error: any) {
+      console.error('Error adding booking:', error);
+      return { success: false, message: `Gagal menyimpan data ke server: ${error.message || error}` };
+    }
   };
 
   // Update administrative booking status
@@ -246,13 +257,13 @@ export default function App() {
   };
 
   // Shift/reschedule booking timeline
-  const handleUpdateBookingTime = (
+  const handleUpdateBookingTime = async (
     bookingId: string, 
     tanggalMulai: string, 
     jamMulai: string, 
     tanggalSelesai: string, 
     jamSelesai: string
-  ): { success: boolean; message: string } => {
+  ): Promise<{ success: boolean; message: string }> => {
     const b = bookings.find(item => item.id === bookingId);
     if (b) {
       const updated = {
@@ -262,67 +273,97 @@ export default function App() {
         tanggal_selesai: tanggalSelesai,
         jam_selesai: jamSelesai
       };
-      addOrUpdateBooking(updated).then(() => {
+      try {
+        await addOrUpdateBooking(updated);
         pushNotification(
           'Jadwal Penyesuaian Sukses',
           `Jadwal untuk kegiatan "${b.kegiatan}" disesuaikan ke tanggal ${tanggalMulai} pukul ${jamMulai} WIB.`,
           'info'
         );
-      }).catch(console.error);
+        return { success: true, message: 'Booking time successfully rescheduled!' };
+      } catch (error: any) {
+        console.error('Error updating booking time:', error);
+        return { success: false, message: `Gagal memperbarui jadwal di server: ${error.message || error}` };
+      }
     }
-
-    return { success: true, message: 'Booking time successfully rescheduled!' };
+    return { success: false, message: 'Booking tidak ditemukan.' };
   };
 
 
   // 3. Vehicle Master data handler modifiers (Admin-Only functions)
-  const handleAddVehicle = (newVehicle: Omit<Vehicle, 'id'>) => {
-    const generatedId = `V00${vehicles.length + 1}`;
+  const handleAddVehicle = async (newVehicle: Omit<Vehicle, 'id'>): Promise<boolean> => {
+    const lastNum = vehicles.reduce((max, v) => {
+      const match = v.id.match(/^V00(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return num > max ? num : max;
+      }
+      return max;
+    }, 0);
+    const generatedId = `V00${lastNum + 1}`;
+    
     const fullVehicle: Vehicle = {
       ...newVehicle,
       id: generatedId
     };
 
-    addOrUpdateVehicle(fullVehicle).then(() => {
+    try {
+      await addOrUpdateVehicle(fullVehicle);
       pushNotification(
         'Armada Sekolah Ditambahkan',
         `Mobil ${newVehicle.nama_kendaraan} siap dijadwalkan dalam aplikasi SCB-GO.`,
         'success'
       );
-    }).catch(console.error);
+      return true;
+    } catch (error) {
+      console.error('Error adding vehicle:', error);
+      return false;
+    }
   };
 
-  const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
-    addOrUpdateVehicle(updatedVehicle).then(() => {
+  const handleUpdateVehicle = async (updatedVehicle: Vehicle): Promise<boolean> => {
+    try {
+      await addOrUpdateVehicle(updatedVehicle);
       pushNotification(
         'Armada Diperbarui',
         `Informasi spesifikasi armada ${updatedVehicle.nama_kendaraan} berhasil diselaraskan.`,
         'info'
       );
-    }).catch(console.error);
+      return true;
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      return false;
+    }
   };
 
-  const handleDeleteVehicle = (vehicleId: string) => {
+  const handleDeleteVehicle = async (vehicleId: string): Promise<boolean> => {
     // Check if any booking is scheduled for this vehicle
     const activeAttachedBookings = bookings.filter(b => b.kendaraan_id === vehicleId && b.status !== 'Selesai' && b.status !== 'Ditolak');
 
     if (activeAttachedBookings.length > 0) {
       alert(`KENDARAAN SEDANG DIGUNAKAN: Mobil ini masih memiliki ${activeAttachedBookings.length} jadwal pemesanan aktif. Mohon batalkan/selesaikan jadwal sebelum menghapus.`);
-      return;
+      return false;
     }
 
     if (confirm('Apakah Anda yakin ingin menghapus data kendaraan ini secara permanen dari sistem?')) {
       const vToDelete = vehicles.find(v => v.id === vehicleId);
       if (vToDelete) {
-        deleteVehicleDoc(vehicleId).then(() => {
+        try {
+          await deleteVehicleDoc(vehicleId);
           pushNotification(
             'Armada Dihapus',
             `Data mobil ${vToDelete.nama_kendaraan || 'Kendaraan'} telah dibersihkan dari database Sarpras.`,
             'alert'
           );
-        }).catch(console.error);
+          return true;
+        } catch (error) {
+          console.error('Error deleting vehicle:', error);
+          alert('Gagal menghapus data kendaraan dari database.');
+          return false;
+        }
       }
     }
+    return false;
   };
 
   const handleLoginSuccess = (user: UserProfile) => {
