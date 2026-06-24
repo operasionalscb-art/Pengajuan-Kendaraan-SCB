@@ -28,17 +28,47 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
   const getVehicleColorClasses = (vId: string) => {
     switch (vId) {
       case 'V001':
-        return { bg: 'bg-emerald-50 hover:bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-800', bullet: 'bg-emerald-500' };
+        return { 
+          bg: 'bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50', 
+          border: 'border-emerald-300 dark:border-emerald-800', 
+          text: 'text-emerald-800 dark:text-emerald-400', 
+          bullet: 'bg-emerald-500' 
+        };
       case 'V002':
-        return { bg: 'bg-indigo-50 hover:bg-indigo-100', border: 'border-indigo-300', text: 'text-indigo-800', bullet: 'bg-indigo-500' };
+        return { 
+          bg: 'bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-950/50', 
+          border: 'border-indigo-300 dark:border-indigo-800', 
+          text: 'text-indigo-800 dark:text-indigo-400', 
+          bullet: 'bg-indigo-500' 
+        };
       case 'V003':
-        return { bg: 'bg-amber-50 hover:bg-amber-100', border: 'border-amber-300', text: 'text-amber-800', bullet: 'bg-amber-500' };
+        return { 
+          bg: 'bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50', 
+          border: 'border-amber-300 dark:border-amber-800', 
+          text: 'text-amber-800 dark:text-amber-400', 
+          bullet: 'bg-amber-500' 
+        };
       case 'V004':
-        return { bg: 'bg-purple-50 hover:bg-purple-100', border: 'border-purple-300', text: 'text-purple-800', bullet: 'bg-purple-500' };
+        return { 
+          bg: 'bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-950/50', 
+          border: 'border-purple-300 dark:border-purple-800', 
+          text: 'text-purple-800 dark:text-purple-400', 
+          bullet: 'bg-purple-500' 
+        };
       case 'V005':
-        return { bg: 'bg-blue-50 hover:bg-blue-100', border: 'border-blue-300', text: 'text-blue-800', bullet: 'bg-blue-500' };
+        return { 
+          bg: 'bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50', 
+          border: 'border-blue-300 dark:border-blue-800', 
+          text: 'text-blue-800 dark:text-blue-400', 
+          bullet: 'bg-blue-500' 
+        };
       default:
-        return { bg: 'bg-slate-50 hover:bg-slate-100', border: 'border-slate-300', text: 'text-slate-800', bullet: 'bg-slate-500' };
+        return { 
+          bg: 'bg-slate-50 dark:bg-neutral-800/30 hover:bg-slate-100 dark:hover:bg-neutral-800/50', 
+          border: 'border-slate-300 dark:border-neutral-700', 
+          text: 'text-slate-800 dark:text-neutral-300', 
+          bullet: 'bg-slate-500' 
+        };
     }
   };
 
@@ -96,15 +126,15 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6" id="calendar-section">
+    <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6" id="calendar-section">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="bg-green-50 text-[#0F8A5F] p-2.5 rounded-xl">
+          <div className="bg-green-50 dark:bg-emerald-950/40 text-[#0F8A5F] dark:text-emerald-400 p-2.5 rounded-xl">
             <CalendarIcon className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-neutral-800">Kalender Jadwal Kendaraan</h3>
-            <p className="text-xs text-neutral-500">Visualisasi penggunaan kendaraan operasional bulanan</p>
+            <h3 className="font-bold text-lg text-neutral-800 dark:text-neutral-100">Kalender Jadwal Kendaraan</h3>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Visualisasi penggunaan kendaraan operasional bulanan</p>
           </div>
         </div>
 
@@ -114,43 +144,43 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
           <select
             value={selectedVehicleFilter}
             onChange={(e) => setSelectedVehicleFilter(e.target.value)}
-            className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 text-xs font-semibold text-neutral-700 rounded-lg outline-none focus:border-[#0F8A5F]"
+            className="px-3 py-1.5 bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-850 text-xs font-semibold text-neutral-700 dark:text-neutral-300 rounded-lg outline-none focus:border-[#0F8A5F] dark:focus:border-emerald-450"
           >
-            <option value="all">Semua Kendaraan</option>
+            <option value="all" className="dark:bg-neutral-900">Semua Kendaraan</option>
             {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
+              <option key={v.id} value={v.id} className="dark:bg-neutral-900">
                 {v.nama_kendaraan} ({v.nomor_polisi})
               </option>
             ))}
           </select>
 
           {/* Month selector */}
-          <div className="flex items-center bg-neutral-50 border border-neutral-200 rounded-lg py-1 px-1.5">
+          <div className="flex items-center bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-850 rounded-lg py-1 px-1.5">
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1 hover:bg-neutral-200 rounded-md transition"
+              className="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-750 rounded-md transition"
             >
-              <ChevronLeft className="w-4 h-4 text-neutral-600" />
+              <ChevronLeft className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
             </button>
             
             <div className="flex items-center gap-1.5 px-2">
               <select
                 value={currentMonth}
                 onChange={(e) => setCurrentMonth(Number(e.target.value))}
-                className="bg-transparent border-none text-xs font-bold text-neutral-700 outline-none cursor-pointer"
+                className="bg-transparent border-none text-xs font-bold text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer"
               >
                 {months.map((m, idx) => (
-                  <option key={m} value={idx}>{m}</option>
+                  <option key={m} value={idx} className="dark:bg-neutral-950">{m}</option>
                 ))}
               </select>
               <select
                 value={currentYear}
                 onChange={(e) => setCurrentYear(Number(e.target.value))}
-                className="bg-transparent border-none text-xs font-bold text-neutral-700 outline-none cursor-pointer"
+                className="bg-transparent border-none text-xs font-bold text-neutral-700 dark:text-neutral-300 outline-none cursor-pointer"
               >
                 {years.map(y => (
-                  <option key={y} value={y}>{y}</option>
+                  <option key={y} value={y} className="dark:bg-neutral-950">{y}</option>
                 ))}
               </select>
             </div>
@@ -158,16 +188,16 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1 hover:bg-neutral-200 rounded-md transition"
+              className="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-750 rounded-md transition"
             >
-              <ChevronRight className="w-4 h-4 text-neutral-600" />
+              <ChevronRight className="w-4 h-4 text-neutral-600 dark:text-neutral-400" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Days of Week Header */}
-      <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs text-neutral-400 border-b border-neutral-100 pb-2 mb-1">
+      <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs text-neutral-400 border-b border-neutral-100 dark:border-neutral-800 pb-2 mb-1">
         <div>MG</div>
         <div>SN</div>
         <div>SL</div>
@@ -178,13 +208,13 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
       </div>
 
       {/* Calendar Days Matrix */}
-      <div className="grid grid-cols-7 gap-1 bg-neutral-50 rounded-xl p-1 min-h-[360px]">
+      <div className="grid grid-cols-7 gap-1 bg-neutral-50 dark:bg-neutral-850 p-1 min-h-[360px] rounded-xl">
         {calendarDays.map((val, idx) => {
           if (val === null) {
             return (
               <div 
                 key={`empty-${idx}`} 
-                className="bg-white/40 rounded-lg min-h-[80px]" 
+                className="bg-white/40 dark:bg-neutral-900/40 rounded-lg min-h-[80px]" 
               />
             );
           }
@@ -198,21 +228,21 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
           return (
             <div 
               key={`day-${val}`} 
-              className={`bg-white rounded-lg p-1.5 min-h-[82px] border flex flex-col justify-between transition group hover:shadow-sm ${
-                isToday ? 'border-[#0F8A5F] ring-1 ring-[#0F8A5F]/20' : 'border-neutral-100'
+              className={`bg-white dark:bg-neutral-900 rounded-lg p-1.5 min-h-[82px] border flex flex-col justify-between transition group hover:shadow-sm ${
+                isToday ? 'border-[#0F8A5F] dark:border-emerald-500 ring-1 ring-[#0F8A5F]/20 dark:ring-emerald-400/20' : 'border-neutral-100 dark:border-neutral-800'
               }`}
             >
               <div className="flex justify-between items-center mb-1">
                 <span className={`text-xs font-bold ${
                   isToday 
                     ? 'bg-[#0F8A5F] text-white w-5 h-5 rounded-full flex items-center justify-center font-extrabold shadow-sm' 
-                    : 'text-neutral-700'
+                    : 'text-neutral-700 dark:text-neutral-300'
                 }`}>
                   {val}
                 </span>
                 
                 {bookingsOnDay.length > 0 && (
-                  <span className="text-[9px] font-semibold text-[#0F8A5F] bg-green-50 px-1 rounded">
+                  <span className="text-[9px] font-semibold text-[#0F8A5F] dark:text-emerald-400 bg-green-50 dark:bg-[#0F8A5F]/20 px-1 rounded">
                     {bookingsOnDay.length} Booking
                   </span>
                 )}
@@ -253,14 +283,14 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
       </div>
 
       {/* Colors Legend */}
-      <div className="mt-4 flex flex-wrap gap-4 justify-center text-xs bg-neutral-50 p-2.5 rounded-xl border border-neutral-100">
-        <span className="font-bold text-neutral-500">Legend:</span>
+      <div className="mt-4 flex flex-wrap gap-4 justify-center text-xs bg-neutral-50 dark:bg-neutral-850 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800">
+        <span className="font-bold text-neutral-500 dark:text-neutral-400">Legend:</span>
         {vehicles.slice(0, 5).map((v) => {
           const s = getVehicleColorClasses(v.id);
           return (
             <div key={v.id} className="flex items-center gap-1.5">
               <span className={`w-2.5 h-2.5 rounded-full ${s.bullet}`} />
-              <span className="text-neutral-600 font-medium">{v.nama_kendaraan}</span>
+              <span className="text-neutral-600 dark:text-neutral-300 font-medium">{v.nama_kendaraan}</span>
             </div>
           );
         })}
@@ -273,9 +303,9 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
         
         return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-55">
-            <div className="bg-white rounded-2xl w-full max-w-lg border border-neutral-100 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-lg border border-neutral-100 dark:border-neutral-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
               {/* Header */}
-              <div className={`p-6 border-b border-neutral-100 flex items-start justify-between bg-gradient-to-r from-neutral-50 to-white`}>
+              <div className={`p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-start justify-between bg-gradient-to-r from-neutral-50 dark:from-neutral-850 to-white dark:to-neutral-900`}>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full tracking-wide ${
@@ -285,14 +315,14 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
                     }`}>
                       {selectedBooking.status}
                     </span>
-                    <span className="text-xs text-neutral-400 font-mono font-medium">{selectedBooking.id}</span>
+                    <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono font-medium">{selectedBooking.id}</span>
                   </div>
-                  <h4 className="font-bold text-lg text-neutral-800 tracking-tight leading-snug">{selectedBooking.kegiatan}</h4>
+                  <h4 className="font-bold text-lg text-neutral-800 dark:text-neutral-100 tracking-tight leading-snug">{selectedBooking.kegiatan}</h4>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedBooking(null)}
-                  className="p-1.5 hover:bg-neutral-100 rounded-lg text-neutral-400 transition"
+                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-400 dark:text-neutral-500 transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -303,94 +333,94 @@ export default function CalendarView({ bookings, vehicles }: CalendarViewProps) 
                 {/* Vehicle details */}
                 <div className={`p-4 rounded-xl border flex items-center justify-between ${style.bg} ${style.border}`}>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <div className="p-2 bg-white dark:bg-neutral-800 rounded-lg shadow-sm">
                       <CalendarIcon className={`w-5 h-5 ${style.text}`} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-neutral-500 leading-none">Pilihan Kendaraan</p>
-                      <p className="font-bold text-neutral-800 mt-1">{matchingVehicle?.nama_kendaraan || "Kendaraan Tidak Ditemukan"}</p>
-                      <p className="text-xs text-neutral-500 font-mono mt-0.5">{matchingVehicle?.nomor_polisi} • Kapasitas {matchingVehicle?.kapasitas} Penumpang</p>
+                      <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400 leading-none">Pilihan Kendaraan</p>
+                      <p className="font-bold text-neutral-800 dark:text-neutral-200 mt-1">{matchingVehicle?.nama_kendaraan || "Kendaraan Tidak Ditemukan"}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-450 font-mono mt-0.5">{matchingVehicle?.nomor_polisi} • Kapasitas {matchingVehicle?.kapasitas} Penumpang</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Date & Time info */}
-                <div className="grid grid-cols-2 gap-4 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+                <div className="grid grid-cols-2 gap-4 bg-neutral-50 dark:bg-neutral-850 p-4 rounded-xl border border-neutral-100 dark:border-neutral-800">
                   <div>
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Mulai</span>
-                    <span className="text-sm font-bold text-neutral-800 block mt-1">{selectedBooking.tanggal_mulai}</span>
-                    <span className="text-xs font-medium text-neutral-500 font-mono mt-0.5">{selectedBooking.jam_mulai} WIB</span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider block">Mulai</span>
+                    <span className="text-sm font-bold text-neutral-800 dark:text-neutral-100 block mt-1">{selectedBooking.tanggal_mulai}</span>
+                    <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 font-mono mt-0.5">{selectedBooking.jam_mulai} WIB</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Selesai</span>
-                    <span className="text-sm font-bold text-neutral-800 block mt-1">{selectedBooking.tanggal_selesai}</span>
-                    <span className="text-xs font-medium text-neutral-500 font-mono mt-0.5">{selectedBooking.jam_selesai} WIB</span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider block">Selesai</span>
+                    <span className="text-sm font-bold text-neutral-800 dark:text-neutral-100 block mt-1">{selectedBooking.tanggal_selesai}</span>
+                    <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 font-mono mt-0.5">{selectedBooking.jam_selesai} WIB</span>
                   </div>
                 </div>
 
                 {/* Responsible Person */}
                 <div className="space-y-3">
                   <div className="flex items-start gap-2.5">
-                    <User className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
+                    <User className="w-4 h-4 text-neutral-400 dark:text-neutral-500 mt-0.5 shrink-0" />
                     <div>
-                      <span className="text-xs font-medium text-neutral-400">Penanggung Jawab:</span>
-                      <p className="text-sm font-bold text-neutral-800">{selectedBooking.penanggung_jawab}</p>
-                      <p className="text-xs text-neutral-500 font-medium flex items-center gap-1">
+                      <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">Penanggung Jawab:</span>
+                      <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{selectedBooking.penanggung_jawab}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium flex items-center gap-1">
                         <Briefcase className="w-3.5 h-3.5" /> {selectedBooking.jabatan}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-2.5">
-                    <MapPin className="w-4 h-4 text-neutral-400 mt-0.5 shrink-0" />
+                    <MapPin className="w-4 h-4 text-neutral-400 dark:text-neutral-500 mt-0.5 shrink-0" />
                     <div>
-                      <span className="text-xs font-medium text-neutral-400">Rute / Lokasi Tujuan:</span>
-                      <p className="text-sm font-bold text-neutral-800">{selectedBooking.tujuan}</p>
+                      <span className="text-xs font-medium text-neutral-400 dark:text-neutral-500">Rute / Lokasi Tujuan:</span>
+                      <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200">{selectedBooking.tujuan}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Passenger list */}
-                <div className="border-t border-neutral-150 pt-4">
+                <div className="border-t border-neutral-150 dark:border-neutral-800 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-neutral-700">Daftar Penumpang ({selectedBooking.jumlah_penumpang})</span>
-                    <span className="text-[10px] text-neutral-400 font-bold">Kapasitas Maks: {matchingVehicle?.kapasitas}</span>
+                    <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300">Daftar Penumpang ({selectedBooking.jumlah_penumpang})</span>
+                    <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold">Kapasitas Maks: {matchingVehicle?.kapasitas}</span>
                   </div>
 
                   {selectedBooking.daftar_penumpang && selectedBooking.daftar_penumpang.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto p-1 bg-neutral-50 rounded-lg">
+                    <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto p-1 bg-neutral-50 dark:bg-neutral-850 rounded-lg">
                       {selectedBooking.daftar_penumpang.map((name, index) => (
                         <span 
                           key={`${name}-${index}`} 
-                          className="text-xs bg-white text-neutral-700 px-2 py-1 rounded-md border border-neutral-200 font-medium inline-block"
+                          className="text-xs bg-white dark:bg-neutral-850 text-neutral-700 dark:text-neutral-300 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-750 font-medium inline-block"
                         >
                           {name}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs italic text-neutral-400">Tidak ada rincian nama penumpang.</p>
+                    <p className="text-xs italic text-neutral-400 dark:text-neutral-500">Tidak ada rincian nama penumpang.</p>
                   )}
                 </div>
 
                 {/* Extra Notes */}
                 {selectedBooking.keterangan_tambahan && (
-                  <div className="bg-yellow-50/70 border border-yellow-200 p-3 rounded-lg text-xs flex gap-2">
-                    <Info className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
+                  <div className="bg-yellow-50/70 dark:bg-amber-950/20 border border-yellow-200 dark:border-amber-900/30 p-3 rounded-lg text-xs flex gap-2">
+                    <Info className="w-4 h-4 text-yellow-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-yellow-800">Catatan Tambahan:</span>
-                      <p className="text-yellow-900 mt-0.5 font-medium">{selectedBooking.keterangan_tambahan}</p>
+                      <span className="font-bold text-yellow-800 dark:text-amber-350">Catatan Tambahan:</span>
+                      <p className="text-yellow-900 dark:text-amber-300 mt-0.5 font-medium">{selectedBooking.keterangan_tambahan}</p>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Close Button footer */}
-              <div className="bg-neutral-50 px-6 py-4 flex justify-end border-t border-neutral-100">
+              <div className="bg-neutral-50 dark:bg-neutral-850/50 px-6 py-4 flex justify-end border-t border-neutral-100 dark:border-neutral-800">
                 <button
                   type="button"
                   onClick={() => setSelectedBooking(null)}
-                  className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 active:scale-95 font-bold text-neutral-700 transition text-xs rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-750 active:scale-95 font-bold text-neutral-700 dark:text-neutral-200 transition text-xs rounded-xl cursor-pointer"
                 >
                   Tutup Rincian
                 </button>

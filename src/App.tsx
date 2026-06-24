@@ -9,6 +9,7 @@ import VehicleManager from './components/VehicleManager';
 import ReportsView from './components/ReportsView';
 import CalendarView from './components/CalendarView';
 import AuthScreen from './components/AuthScreen';
+import AccountManager from './components/AccountManager';
 
 import { 
   Bell, 
@@ -19,7 +20,9 @@ import {
   LogOut, 
   Activity,
   Menu,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export default function App() {
@@ -63,6 +66,21 @@ export default function App() {
   }, [currentUser]);
 
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
+
+  // Dark mode state backed by LocalStorage
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('scb_dark_mode');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('scb_dark_mode', String(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   // Notification management state
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
@@ -348,7 +366,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] flex flex-col lg:flex-row antialiased font-sans text-neutral-800">
+    <div className="min-h-screen bg-[#F3F4F6] dark:bg-neutral-950 flex flex-col lg:flex-row antialiased font-sans text-neutral-800 dark:text-neutral-100 transition-colors duration-200">
       
       {/* Sidebar navigation system */}
       <Sidebar 
@@ -360,45 +378,59 @@ export default function App() {
         unreadNotificationsCount={unreadNotificationsCount}
         currentUser={currentUser}
         onLogout={handleLogout}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />
 
       {/* Main Content Workspace viewport */}
       <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         
         {/* Desktop Top Nav Header */}
-        <header className="hidden lg:flex items-center justify-between h-20 bg-white px-8 border-b border-neutral-150 shrink-0 select-none">
+        <header className="hidden lg:flex items-center justify-between h-20 bg-white dark:bg-neutral-900 px-8 border-b border-neutral-150 dark:border-neutral-800 shrink-0 select-none transition-colors duration-200">
           <div>
-            <h1 className="text-xl font-black text-neutral-800 tracking-tight flex items-center gap-2">
+            <h1 className="text-xl font-black text-neutral-800 dark:text-neutral-100 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-6 bg-[#0F8A5F] rounded-full inline-block" />
-              SCB-GO <span className="text-xs text-[#0F8A5F] bg-green-50 px-2 py-0.5 rounded-full font-extrabold tracking-normal">Sekolah Cendekia BAZNAS</span>
+              SCB-GO <span className="text-xs text-[#0F8A5F] dark:text-[#E7F3EF] bg-green-50 dark:bg-[#0F8A5F]/25 px-2 py-0.5 rounded-full font-extrabold tracking-normal">Sekolah Cendekia BAZNAS</span>
             </h1>
-            <p className="text-xs text-neutral-400 font-medium">Sistem Pembeda & Manajemen Peminjaman Operasional Sekolah anti Bentrok</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 font-medium">Sistem Pembeda & Manajemen Peminjaman Operasional Sekolah anti Bentrok</p>
           </div>
 
-          {/* User profile & Role status widget */}
+          {/* User profile, Dark Mode toggle, & Role status widget */}
           <div className="flex items-center gap-6">
+            
+            {/* Dark Mode Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2.5 bg-gray-100 dark:bg-neutral-800 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-650 dark:text-neutral-300 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center border border-gray-200 dark:border-neutral-700"
+              title={isDarkMode ? "Aktifkan Mode Terang" : "Aktifkan Mode Gelap"}
+              id="btn-toggle-dark-mode-desktop"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-600" />}
+            </button>
+
             <div className="text-right">
-              <p className="text-xs font-bold text-neutral-700">{activeUser.nama}</p>
-              <p className="text-[10px] text-neutral-450 font-semibold">{activeUser.email} ({activeUser.jabatan})</p>
+              <p className="text-xs font-bold text-neutral-700 dark:text-neutral-200">{activeUser.nama}</p>
+              <p className="text-[10px] text-neutral-450 dark:text-neutral-400 font-semibold">{activeUser.email} ({activeUser.jabatan})</p>
             </div>
             
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0F8A5F] to-emerald-400 text-white flex items-center justify-center font-bold shadow-md">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0F8A5F] to-emerald-400 text-white flex items-center justify-center font-bold shadow-md shrink-0">
               {currentRole === 'Admin' ? 'ADM' : 'PEM'}
             </div>
           </div>
         </header>
 
         {/* Informational Role Indicator banner overlay */}
-        <div className="bg-[#0F8A5F]/5 border-y border-[#0F8A5F]/15 px-6 py-2.5 flex items-center justify-between text-xs text-slate-700 font-semibold">
+        <div className="bg-[#0F8A5F]/5 dark:bg-[#0F8A5F]/10 border-y border-[#0F8A5F]/15 dark:border-[#0F8A5F]/20 px-6 py-2.5 flex items-center justify-between text-xs text-slate-700 dark:text-neutral-300 font-semibold">
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[#0F8A5F] shrink-0" />
-            <span>Sesi aktif: <strong className="text-neutral-900">{activeUser.nama}</strong> • Hak akses: <strong className="text-[#0F8A5F] uppercase font-extrabold">{currentRole}</strong> • {currentUser?.role === 'Admin' ? 'Anda login sebagai Super Admin (Dapat memverifikasi/menolak ajuan).' : 'Masuk sebagai Super Admin untuk memverifikasi/menyetujui ajuan.'}</span>
+            <span>Sesi aktif: <strong className="text-neutral-900 dark:text-neutral-100">{activeUser.nama}</strong> • Hak akses: <strong className="text-[#0F8A5F] dark:text-[#E7F3EF] uppercase font-extrabold">{currentRole}</strong> • {currentUser?.role === 'Admin' ? 'Anda login sebagai Super Admin (Dapat memverifikasi/menolak ajuan).' : 'Masuk sebagai Super Admin untuk memverifikasi/menyetujui ajuan.'}</span>
           </div>
           {!currentUser ? (
             <button
               type="button"
               onClick={() => setCurrentTab('login')}
-              className="text-xs text-[#0F8A5F] hover:underline font-bold"
+              className="text-xs text-[#0F8A5F] dark:text-[#E7F3EF] hover:underline font-bold cursor-pointer"
             >
               Masuk Super Admin &rarr;
             </button>
@@ -406,7 +438,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin')}
-              className="text-xs text-[#0F8A5F] hover:underline font-bold"
+              className="text-xs text-[#0F8A5F] dark:text-[#E7F3EF] hover:underline font-bold cursor-pointer"
             >
               Simulasi: {currentRole === 'Admin' ? 'Lihat Pemohon' : 'Lihat Admin'}
             </button>
@@ -478,6 +510,16 @@ export default function App() {
                 onAddVehicle={handleAddVehicle}
                 onUpdateVehicle={handleUpdateVehicle}
                 onDeleteVehicle={handleDeleteVehicle}
+              />
+            </div>
+          )}
+
+          {currentTab === 'pengguna' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <AccountManager 
+                currentUser={currentUser}
+                onUpdateCurrentUser={setCurrentUser}
+                pushNotification={pushNotification}
               />
             </div>
           )}

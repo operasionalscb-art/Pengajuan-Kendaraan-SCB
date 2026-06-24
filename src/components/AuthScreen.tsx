@@ -302,34 +302,34 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       <div className="max-w-xl mx-auto space-y-6">
         
         {/* Header Summary */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-left space-y-4">
-          <div className="flex items-center gap-3 border-b pb-4">
-            <div className="p-3 bg-scb-light-green text-scb-green rounded-xl">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-sm p-6 text-left space-y-4">
+          <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+            <div className="p-3 bg-scb-light-green dark:bg-emerald-950/40 text-scb-green dark:text-emerald-400 rounded-xl">
               <UserCheck className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Profil Pengguna Aktif</h2>
-              <p className="text-xs text-gray-500">Informasi kredensial dan hak akses sesi Anda saat ini</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100">Profil Pengguna Aktif</h2>
+              <p className="text-xs text-gray-500 dark:text-neutral-400">Informasi kredensial dan hak akses sesi Anda saat ini</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-150">
-              <span className="text-[10px] text-gray-400 font-bold uppercase block mb-0.5">Nama Lengkap</span>
-              <span className="font-bold text-gray-800">{currentUser.nama}</span>
+            <div className="p-3 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-850">
+              <span className="text-[10px] text-gray-400 dark:text-neutral-500 font-bold uppercase block mb-0.5">Nama Lengkap</span>
+              <span className="font-bold text-gray-800 dark:text-neutral-200">{currentUser.nama}</span>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-150">
-              <span className="text-[10px] text-gray-400 font-bold uppercase block mb-0.5">Email</span>
-              <span className="font-bold text-gray-800">{currentUser.email}</span>
+            <div className="p-3 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-850">
+              <span className="text-[10px] text-gray-400 dark:text-neutral-500 font-bold uppercase block mb-0.5">Email</span>
+              <span className="font-bold text-gray-800 dark:text-neutral-200">{currentUser.email}</span>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-150">
-              <span className="text-[10px] text-gray-400 font-bold uppercase block mb-0.5">Jabatan / Bagian</span>
-              <span className="font-bold text-gray-800">{currentUser.jabatan}</span>
+            <div className="p-3 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-850">
+              <span className="text-[10px] text-gray-400 dark:text-neutral-500 font-bold uppercase block mb-0.5">Jabatan / Bagian</span>
+              <span className="font-bold text-gray-800 dark:text-neutral-200">{currentUser.jabatan}</span>
             </div>
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-150">
-              <span className="text-[10px] text-gray-400 font-bold uppercase block mb-0.5">Hak Akses</span>
+            <div className="p-3 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-850">
+              <span className="text-[10px] text-gray-400 dark:text-neutral-500 font-bold uppercase block mb-0.5">Hak Akses</span>
               <span className={`inline-block px-2 py-0.5 mt-0.5 rounded text-[10px] font-bold uppercase ${
-                currentUser.role === 'Admin' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                currentUser.role === 'Admin' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400'
               }`}>
                 {currentUser.role === 'Admin' ? 'Super Admin' : 'Pemohon (Pegawai)'}
               </span>
@@ -341,7 +341,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
               <button
                 type="button"
                 onClick={onLogout}
-                className="flex items-center gap-1.5 py-2 px-4 bg-red-50 hover:bg-red-100 text-red-650 font-bold text-xs rounded-xl border border-red-200 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 py-2 px-4 bg-red-50 dark:bg-red-950/25 hover:bg-red-100 dark:hover:bg-red-950/40 text-red-650 dark:text-red-400 font-bold text-xs rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer"
                 id="btn-profile-logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -352,26 +352,26 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         </div>
 
         {/* Change Password Panel */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-left space-y-4">
-          <div className="flex items-center gap-3 border-b pb-4">
-            <div className="p-3 bg-orange-50 text-orange-600 rounded-xl">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-sm p-6 text-left space-y-4">
+          <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
+            <div className="p-3 bg-orange-50 dark:bg-amber-950/40 text-orange-600 dark:text-amber-450 rounded-xl">
               <Settings className="w-6 h-6 animate-spin-slow" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Pengelolaan Sandi (Password)</h2>
-              <p className="text-xs text-gray-500">Perbarui kunci pengaman masuk akun Anda secara berkala</p>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-neutral-100">Pengelolaan Sandi (Password)</h2>
+              <p className="text-xs text-gray-500 dark:text-neutral-400">Perbarui kunci pengaman masuk akun Anda secara berkala</p>
             </div>
           </div>
 
           {errorMsg && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-start gap-2.5">
+            <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 text-red-700 dark:text-red-400 text-xs font-semibold rounded-xl flex items-start gap-2.5">
               <Info className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-xl flex items-start gap-2.5">
+            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-xl flex items-start gap-2.5">
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0 mt-0.5" />
               <span>{successMsg}</span>
             </div>
@@ -379,7 +379,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
           <form onSubmit={handleChangePassword} className="space-y-4" id="form-manage-password">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 block">Password Lama</label>
+              <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Password Lama</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-450">
                   <Lock className="w-4 h-4 text-gray-400" />
@@ -389,13 +389,13 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="Masukkan password saat ini (Contoh: admin123)"
-                  className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                  className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                   id="input-old-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowChangePass(!showChangePass)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-450 hover:text-gray-700 cursor-pointer"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-450 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300 cursor-pointer"
                 >
                   {showChangePass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -404,7 +404,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Password Baru</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Password Baru</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-450">
                     <KeyRound className="w-4 h-4 text-gray-400" />
@@ -414,14 +414,14 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Minimal 6 karakter"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-new-password"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 block">Konfirmasi Password Baru</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Konfirmasi Password Baru</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-450">
                     <KeyRound className="w-4 h-4 text-gray-400" />
@@ -431,7 +431,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Ketik ulang password baru"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-confirm-new-password"
                   />
                 </div>
@@ -456,7 +456,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
   // Not logged in: standard authorization with password protection
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center p-2 font-sans">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden transition-all">
+      <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-xl overflow-hidden transition-all">
         
         {/* Top Header Decorator */}
         <div className="bg-scb-green p-6 text-white text-center relative overflow-hidden">
@@ -476,14 +476,14 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         </div>
 
         {/* Tab Selector */}
-        <div className="flex border-b border-gray-100 bg-gray-50/50">
+        <div className="flex border-b border-gray-100 dark:border-neutral-800 bg-gray-50/50 dark:bg-neutral-850/50">
           <button
             type="button"
             onClick={() => { setActiveTab('login'); setErrorMsg(''); setSuccessMsg(''); }}
             className={`flex-1 py-3.5 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'login' 
-                ? 'text-scb-green border-scb-green bg-white' 
-                : 'text-gray-400 border-transparent hover:text-gray-700'
+                ? 'text-scb-green border-scb-green bg-white dark:bg-neutral-900 dark:text-emerald-400 dark:border-emerald-400' 
+                : 'text-gray-400 border-transparent hover:text-gray-750 dark:hover:text-neutral-250'
             }`}
             id="tab-select-login"
           >
@@ -496,8 +496,8 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
             onClick={() => { setActiveTab('register'); setErrorMsg(''); setSuccessMsg(''); }}
             className={`flex-1 py-3.5 text-center text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activeTab === 'register' 
-                ? 'text-scb-green border-scb-green bg-white' 
-                : 'text-gray-400 border-transparent hover:text-gray-700'
+                ? 'text-scb-green border-scb-green bg-white dark:bg-neutral-900 dark:text-emerald-400 dark:border-emerald-400' 
+                : 'text-gray-400 border-transparent hover:text-gray-750 dark:hover:text-neutral-250'
             }`}
             id="tab-select-register"
           >
@@ -508,18 +508,18 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         </div>
 
         {/* Content body */}
-        <div className="p-6 md:p-8 space-y-6">
+        <div className="p-6 md:p-8 space-y-6 bg-white dark:bg-neutral-900">
           
           {/* Notification Alert / Success Badge */}
           {errorMsg && (
-            <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl flex items-start gap-2.5 animate-pulse" id="alert-error-auth">
+            <div className="p-3.5 bg-red-50 dark:bg-red-950/25 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 text-xs font-semibold rounded-xl flex items-start gap-2.5 animate-pulse" id="alert-error-auth">
               <Info className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded-xl flex items-start gap-2.5 animate-bounce" id="alert-success-auth">
+            <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold rounded-xl flex items-start gap-2.5 animate-bounce" id="alert-success-auth">
               <CheckCircle2 className="w-4.5 h-4.5 text-emerald-600 shrink-0 mt-0.5" />
               <span>{successMsg}</span>
             </div>
@@ -529,7 +529,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
           {activeTab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4" id="form-login-auth">
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-bold text-gray-700 block">Alamat Email Kerja</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Alamat Email Kerja</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-450">
                     <Mail className="w-4 h-4 text-gray-400" />
@@ -539,14 +539,14 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="nama@baznas.sch.id atau gmail"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-login-email"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-bold text-gray-700 block">Password Pengaman</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Password Pengaman</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-450">
                     <Lock className="w-4 h-4 text-gray-400" />
@@ -556,20 +556,17 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="Sandi keamanan akun Anda"
-                    className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-login-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowLoginPass(!showLoginPass)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-450 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300 cursor-pointer"
                     id="btn-toggle-login-pass"
                   >
                     {showLoginPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-gray-500">
-                  <span>Sandi default demo: <strong>admin123</strong></span>
                 </div>
               </div>
 
@@ -588,7 +585,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
           {activeTab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-4" id="form-register-auth">
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-bold text-gray-700 block">Nama Lengkap</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Nama Lengkap</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                     <User className="w-4 h-4 text-gray-400" />
@@ -598,14 +595,14 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     placeholder="Contoh: Ust. Ahmad, S.Pd"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-register-name"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-bold text-gray-700 block">Alamat Email</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Alamat Email</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                     <Mail className="w-4 h-4 text-gray-400" />
@@ -615,18 +612,18 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     placeholder="nama.pegawai@baznas.sch.id"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-register-email"
                   />
                 </div>
-                <div className="p-2.5 bg-blue-50/80 rounded-lg text-[10px] text-blue-700 font-semibold border border-blue-100 flex items-start gap-1.5 leading-normal mt-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                  <span>Daftarkan email <strong className="text-blue-805">operasional.scb@gmail.com</strong> sebagai <strong>Super Admin Sarpras</strong>.</span>
+                <div className="p-2.5 bg-blue-50/80 dark:bg-blue-950/20 rounded-lg text-[10px] text-blue-700 dark:text-blue-400 font-semibold border border-blue-100 dark:border-blue-900/30 flex items-start gap-1.5 leading-normal mt-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
+                  <span>Daftarkan email <strong className="text-blue-805 dark:text-blue-300">operasional.scb@gmail.com</strong> sebagai <strong>Super Admin Sarpras</strong>.</span>
                 </div>
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-bold text-gray-700 block">Jabatan / Bagian</label>
+                <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Jabatan / Bagian</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                     <Briefcase className="w-4 h-4 text-gray-400" />
@@ -636,7 +633,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                     value={regJabatan}
                     onChange={(e) => setRegJabatan(e.target.value)}
                     placeholder="Contoh: Humas, Guru Tahfidz, Pembina OSIS"
-                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                    className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                     id="input-register-jabatan"
                   />
                 </div>
@@ -644,7 +641,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Sandi (Password)</label>
+                  <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Sandi (Password)</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                       <Lock className="w-4 h-4 text-gray-400" />
@@ -654,13 +651,13 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       placeholder="Min 6 karakter"
-                      className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                      className="w-full text-xs pl-10 pr-10 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                       id="input-register-password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowRegPass(!showRegPass)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700 cursor-pointer"
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-450 dark:text-neutral-500 hover:text-gray-700 dark:hover:text-neutral-300 cursor-pointer"
                       id="btn-toggle-reg-pass"
                     >
                       {showRegPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -669,7 +666,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 block">Konfirmasi Sandi</label>
+                  <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Konfirmasi Sandi</label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
                       <Lock className="w-4 h-4 text-gray-400" />
@@ -679,7 +676,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
                       value={regPasswordConfirm}
                       onChange={(e) => setRegPasswordConfirm(e.target.value)}
                       placeholder="Ulangi sandi"
-                      className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
+                      className="w-full text-xs pl-10 pr-3.5 py-3 border border-gray-300 dark:border-neutral-700 rounded-xl bg-transparent dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-scb-green focus:border-scb-green transition-all"
                       id="input-register-password-confirm"
                     />
                   </div>
@@ -696,44 +693,6 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
               </button>
             </form>
           )}
-
-          {/* Preset / Quick Login Section */}
-          <div className="pt-5 border-t border-gray-100 space-y-3">
-            <div className="flex items-center gap-2 text-gray-400">
-              <span className="h-px bg-gray-200 flex-1" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Demo / Quick Login</span>
-              <span className="h-px bg-gray-200 flex-1" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
-              {presets.map((p) => (
-                <button
-                  key={p.email}
-                  type="button"
-                  onClick={() => handleQuickLogin(p)}
-                  className="w-full text-left p-2.5 bg-gray-50 hover:bg-scb-light-green border border-gray-200 rounded-xl hover:border-scb-green/40 transition-all flex items-center justify-between group cursor-pointer text-xs"
-                  id={`btn-preset-login-${p.email.split('@')[0]}`}
-                >
-                  <div className="overflow-hidden">
-                    <p className="font-bold text-gray-800 leading-tight group-hover:text-scb-green transition-colors">
-                      {p.nama}
-                    </p>
-                    <p className="text-[10px] text-gray-500 truncate">
-                      {p.email} • {p.jabatan}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[9px] text-gray-400 font-semibold font-mono">pass: {p.password}</span>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold tracking-tight uppercase ${
-                      p.role === 'Admin' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {p.label}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
 
         </div>
 
