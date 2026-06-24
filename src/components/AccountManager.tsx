@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, AppRole } from '../types';
+import { subscribeUsers, addOrUpdateUser, deleteUserDoc } from '../lib/firebase';
 import { 
   Users, 
   UserPlus, 
@@ -41,54 +42,13 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Initial user loading
+  // Real-time user loading from Firestore
   useEffect(() => {
-    loadUsers();
+    const unsubscribe = subscribeUsers((firestoreUsers) => {
+      setUsers(firestoreUsers);
+    });
+    return () => unsubscribe();
   }, []);
-
-  const loadUsers = () => {
-    const saved = localStorage.getItem('scb_registered_users');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as UserProfile[];
-        setUsers(parsed);
-      } catch (e) {
-        console.error('Failed to parse users:', e);
-      }
-    } else {
-      // Default initial users
-      const initial: UserProfile[] = [
-        {
-          email: 'operasional.scb@gmail.com',
-          nama: 'Super Admin Sarpras',
-          jabatan: 'Kepala Bagian Sarpras',
-          role: 'Admin',
-          password: 'admin123'
-        },
-        {
-          email: 'kesiswaan.cendekia@baznas.sch.id',
-          nama: 'Ust. Ahmad Fauzi',
-          jabatan: 'Wakasek Kesiswaan',
-          role: 'Pemohon',
-          password: 'pegawai123'
-        },
-        {
-          email: 'humas.cendekia@baznas.sch.id',
-          nama: 'Ustz. Rahma Wardani',
-          jabatan: 'Koordinator Humas',
-          role: 'Pemohon',
-          password: 'pegawai123'
-        }
-      ];
-      localStorage.setItem('scb_registered_users', JSON.stringify(initial));
-      setUsers(initial);
-    }
-  };
-
-  const saveUsersToStorage = (updatedUsers: UserProfile[]) => {
-    localStorage.setItem('scb_registered_users', JSON.stringify(updatedUsers));
-    setUsers(updatedUsers);
-  };
 
   const openAddForm = () => {
     setEditingEmail(null);
@@ -139,8 +99,6 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       return;
     }
 
-    const updatedUsers = [...users];
-
     if (editingEmail === null) {
       // Create new user mode
       const alreadyExists = users.some(u => u.email.toLowerCase() === emailClean);
@@ -157,19 +115,21 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         password: passwordClean
       };
 
-      updatedUsers.push(newUser);
-      saveUsersToStorage(updatedUsers);
-      
-      pushNotification(
-        'Akun Baru Ditambahkan',
-        `Akun ${newUser.nama} (${newUser.role}) berhasil ditambahkan ke database sistem.`,
-        'success'
-      );
-      setSuccessMsg('Akun baru berhasil ditambahkan!');
+      addOrUpdateUser(newUser).then(() => {
+        pushNotification(
+          'Akun Baru Ditambahkan',
+          `Akun ${newUser.nama} (${newUser.role}) berhasil ditambahkan ke database sistem.`,
+          'success'
+        );
+        setSuccessMsg('Akun baru berhasil ditambahkan!');
+      }).catch(e => {
+        console.error(e);
+        setErrorMsg('Gagal menambahkan akun ke database.');
+      });
     } else {
       // Edit mode
-      const userIndex = users.findIndex(u => u.email.toLowerCase() === editingEmail.toLowerCase());
-      if (userIndex === -1) {
+      const existingUser = users.find(u => u.email.toLowerCase() === editingEmail.toLowerCase());
+      if (!existingUser) {
         setErrorMsg('Akun yang diedit tidak ditemukan.');
         return;
       }
@@ -181,6 +141,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
           setErrorMsg('Email baru ini sudah digunakan oleh akun lain.');
           return;
         }
+        // Delete old email record if changed
+        deleteUserDoc(editingEmail);
       }
 
       const updatedUser: UserProfile = {
@@ -191,20 +153,22 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         password: passwordClean
       };
 
-      updatedUsers[userIndex] = updatedUser;
-      saveUsersToStorage(updatedUsers);
+      addOrUpdateUser(updatedUser).then(() => {
+        // If editing self, update the current active user session!
+        if (currentUser && currentUser.email.toLowerCase() === editingEmail.toLowerCase()) {
+          onUpdateCurrentUser(updatedUser);
+        }
 
-      // If editing self, update the current active user session!
-      if (currentUser && currentUser.email.toLowerCase() === editingEmail.toLowerCase()) {
-        onUpdateCurrentUser(updatedUser);
-      }
-
-      pushNotification(
-        'Akun Diperbarui',
-        `Informasi profil dan hak akses akun ${updatedUser.nama} berhasil disimpan.`,
-        'info'
-      );
-      setSuccessMsg('Informasi akun berhasil disimpan!');
+        pushNotification(
+          'Akun Diperbarui',
+          `Informasi profil dan hak akses akun ${updatedUser.nama} berhasil disimpan.`,
+          'info'
+        );
+        setSuccessMsg('Informasi akun berhasil disimpan!');
+      }).catch(e => {
+        console.error(e);
+        setErrorMsg('Gagal memperbarui akun di database.');
+      });
     }
 
     setTimeout(() => {
@@ -221,14 +185,16 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     }
 
     if (confirm(`Apakah Anda yakin ingin menghapus akun ${name} (${email}) secara permanen? Sesi masuk akun tersebut akan dicabut.`)) {
-      const updated = users.filter(u => u.email.toLowerCase() !== email.toLowerCase());
-      saveUsersToStorage(updated);
-
-      pushNotification(
-        'Akun Dihapus',
-        `Akun milik ${name} telah dibersihkan secara permanen dari sistem.`,
-        'alert'
-      );
+      deleteUserDoc(email).then(() => {
+        pushNotification(
+          'Akun Dihapus',
+          `Akun milik ${name} telah dibersihkan secara permanen dari sistem.`,
+          'alert'
+        );
+      }).catch(e => {
+        console.error(e);
+        alert('Gagal menghapus akun.');
+      });
     }
   };
 
@@ -239,14 +205,17 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     }
 
     const newRole: AppRole = user.role === 'Admin' ? 'Pemohon' : 'Admin';
-    const updated = users.map(u => u.email.toLowerCase() === user.email.toLowerCase() ? { ...u, role: newRole } : u);
-    saveUsersToStorage(updated);
-
-    pushNotification(
-      'Hak Akses Diperbarui',
-      `Hak akses untuk ${user.nama} berhasil diubah menjadi ${newRole === 'Admin' ? 'SUPER ADMIN' : 'PEMOHON (PEGAWAI)'}.`,
-      'info'
-    );
+    const updatedUser = { ...user, role: newRole };
+    addOrUpdateUser(updatedUser).then(() => {
+      pushNotification(
+        'Hak Akses Diperbarui',
+        `Hak akses untuk ${user.nama} berhasil diubah menjadi ${newRole === 'Admin' ? 'SUPER ADMIN' : 'PEMOHON (PEGAWAI)'}.`,
+        'info'
+      );
+    }).catch(e => {
+      console.error(e);
+      alert('Gagal mengubah hak akses.');
+    });
   };
 
   const filteredUsers = users.filter(u => {

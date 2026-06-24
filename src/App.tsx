@@ -12,6 +12,19 @@ import AuthScreen from './components/AuthScreen';
 import AccountManager from './components/AccountManager';
 
 import { 
+  seedInitialData,
+  subscribeVehicles,
+  subscribeBookings,
+  subscribeNotifications,
+  addOrUpdateVehicle,
+  deleteVehicleDoc,
+  addOrUpdateBooking,
+  deleteBookingDoc,
+  addOrUpdateNotification,
+  deleteNotificationDoc
+} from './lib/firebase';
+
+import { 
   Bell, 
   MapPin, 
   Clock, 
@@ -26,22 +39,33 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // 1. Core State Managers backed by LocalStorage
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
-    const saved = localStorage.getItem('scb_vehicles');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_VEHICLES;
-  });
+  // 1. Core State Managers (Populated via real-time Firestore sync)
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-  const [bookings, setBookings] = useState<Booking[]>(() => {
-    const saved = localStorage.getItem('scb_bookings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_BOOKINGS;
-  });
+  // Seed database and set up subscriptions
+  useEffect(() => {
+    seedInitialData().then(() => {
+      const unsubVehicles = subscribeVehicles((data) => {
+        setVehicles(data);
+      });
+      const unsubBookings = subscribeBookings((data) => {
+        setBookings(data);
+      });
+      const unsubNotifs = subscribeNotifications((data) => {
+        setNotifications(data);
+      });
+
+      return () => {
+        unsubVehicles();
+        unsubBookings();
+        unsubNotifs();
+      };
+    }).catch((err) => {
+      console.error('Error seeding/subscribing to Firestore:', err);
+    });
+  }, []);
 
   // User session state
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
@@ -82,36 +106,12 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Notification management state
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    const saved = localStorage.getItem('scb_notifications');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return [
-      {
-        id: 'N-001',
-        title: 'Selamat Datang di SCB-GO!',
-        message: 'Aplikasi manajemen peminjaman kendaraan operasional Sekolah Cendekia BAZNAS aktif dan siap melayani pengajuan Anda.',
-        timestamp: '12-06 00:00',
-        isRead: false,
-        type: 'info'
-      },
-      {
-        id: 'N-002',
-        title: 'Pengajuan Selesai Diinput',
-        message: 'Lomba Pramuka kesiswaan menggunakan Isuzu Elf Long telah disetujui untuk keberangkatan pagi ini.',
-        timestamp: '12-06 07:00',
-        isRead: false,
-        type: 'success'
-      }
-    ];
-  });
-
   // H-1 booking reminder trigger
   // Since today is 2026-06-12, tomorrow is 2026-06-13.
   // Look for any approved bookings on 2026-06-13 to trigger H-1 reminder.
   useEffect(() => {
+    if (bookings.length === 0) return;
+    
     const tomorrowStr = "2026-06-13";
     const tomorrowBooking = bookings.find(b => b.tanggal_mulai === tomorrowStr && b.status === 'Disetujui');
     
@@ -131,26 +131,13 @@ export default function App() {
         type: 'warning'
       };
 
-      setNotifications(prev => [newReminder, ...prev]);
+      addOrUpdateNotification(newReminder).catch(console.error);
     }
   }, [bookings, vehicles, notifications]);
-
-  // Persists states whenever they alter
-  useEffect(() => {
-    localStorage.setItem('scb_vehicles', JSON.stringify(vehicles));
-  }, [vehicles]);
-
-  useEffect(() => {
-    localStorage.setItem('scb_bookings', JSON.stringify(bookings));
-  }, [bookings]);
 
   useEffect(() => {
     localStorage.setItem('scb_role', currentRole);
   }, [currentRole]);
-
-  useEffect(() => {
-    localStorage.setItem('scb_notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // Handle addition of standard notification utilities
   const pushNotification = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'alert') => {
@@ -166,15 +153,20 @@ export default function App() {
       type
     };
 
-    setNotifications(prev => [nw, ...prev]);
+    addOrUpdateNotification(nw).catch(console.error);
   };
 
   const handleClearNotifications = () => {
-    setNotifications([]);
+    notifications.forEach((n) => {
+      deleteNotificationDoc(n.id).catch(console.error);
+    });
   };
 
   const handleMarkNotificationRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    const target = notifications.find(n => n.id === id);
+    if (target) {
+      addOrUpdateNotification({ ...target, isRead: true }).catch(console.error);
+    }
   };
 
 
@@ -190,66 +182,66 @@ export default function App() {
       created_at: new Date().toISOString()
     };
 
-    setBookings(prev => [fullBooking, ...prev]);
-
-    // Send visual notification card
-    const targetVehicle = vehicles.find(v => v.id === newBooking.kendaraan_id);
-    if (asStatus === 'Draft') {
-      pushNotification(
-        'Pengajuan Disimpan ke Draft',
-        `Peminjaman armada ${targetVehicle?.nama_kendaraan || 'sekolah'} disimpan sebagai draft sementara.`,
-        'info'
-      );
-    } else {
-      pushNotification(
-        'Pengajuan Baru Terdaftar',
-        `Pengajuan oleh ${newBooking.penanggung_jawab} untuk kegiatan "${newBooking.kegiatan}" terdaftar & menunggu peninjauan Sarpras.`,
-        'warning'
-      );
-    }
+    addOrUpdateBooking(fullBooking).then(() => {
+      // Send visual notification card
+      const targetVehicle = vehicles.find(v => v.id === newBooking.kendaraan_id);
+      if (asStatus === 'Draft') {
+        pushNotification(
+          'Pengajuan Disimpan ke Draft',
+          `Peminjaman armada ${targetVehicle?.nama_kendaraan || 'sekolah'} disimpan sebagai draft sementara.`,
+          'info'
+        );
+      } else {
+        pushNotification(
+          'Pengajuan Baru Terdaftar',
+          `Pengajuan oleh ${newBooking.penanggung_jawab} untuk kegiatan "${newBooking.kegiatan}" terdaftar & menunggu peninjauan Sarpras.`,
+          'warning'
+        );
+      }
+    }).catch(console.error);
 
     return { success: true, message: 'Booking successfully added!' };
   };
 
   // Update administrative booking status
   const handleUpdateBookingStatus = (bookingId: string, newStatus: BookingStatus) => {
-    setBookings(prev => prev.map(b => {
-      if (b.id === bookingId) {
-        const titleText = `Status Pengajuan Diperbarui`;
-        const v = vehicles.find(car => car.id === b.kendaraan_id);
-        
-        let messageText = `Pengajuan kegiatan "${b.kegiatan}" diubah statusnya menjadi ${newStatus}.`;
-        let notifType: 'info' | 'success' | 'warning' | 'alert' = 'info';
+    const b = bookings.find(item => item.id === bookingId);
+    if (b) {
+      const titleText = `Status Pengajuan Diperbarui`;
+      const v = vehicles.find(car => car.id === b.kendaraan_id);
+      
+      let messageText = `Pengajuan kegiatan "${b.kegiatan}" diubah statusnya menjadi ${newStatus}.`;
+      let notifType: 'info' | 'success' | 'warning' | 'alert' = 'info';
 
-        if (newStatus === 'Disetujui') {
-          messageText = `Peminjaman ${v?.nama_kendaraan || 'Kendaraan'} untuk kegiatan "${b.kegiatan}" telah DISETUJUI oleh Admin Sarpras.`;
-          notifType = 'success';
-        } else if (newStatus === 'Ditolak') {
-          messageText = `Pengajuan kendaraan untuk kegiatan "${b.kegiatan}" DITOLAK oleh Admin Sarpras karena waktu bentrok/keperluan lain.`;
-          notifType = 'alert';
-        } else if (newStatus === 'Selesai') {
-          messageText = `Perjalanan armada ${v?.nama_kendaraan || 'Kendaraan'} selesai. Kunci kontak serta STNK telah diserahterimakan kembali.`;
-          notifType = 'info';
-        }
-
-        pushNotification(titleText, messageText, notifType);
-        return { ...b, status: newStatus };
+      if (newStatus === 'Disetujui') {
+        messageText = `Peminjaman ${v?.nama_kendaraan || 'Kendaraan'} untuk kegiatan "${b.kegiatan}" telah DISETUJUI oleh Admin Sarpras.`;
+        notifType = 'success';
+      } else if (newStatus === 'Ditolak') {
+        messageText = `Pengajuan kendaraan untuk kegiatan "${b.kegiatan}" DITOLAK oleh Admin Sarpras karena waktu bentrok/keperluan lain.`;
+        notifType = 'alert';
+      } else if (newStatus === 'Selesai') {
+        messageText = `Perjalanan armada ${v?.nama_kendaraan || 'Kendaraan'} selesai. Kunci kontak serta STNK telah diserahterimakan kembali.`;
+        notifType = 'info';
       }
-      return b;
-    }));
+
+      pushNotification(titleText, messageText, notifType);
+      addOrUpdateBooking({ ...b, status: newStatus }).catch(console.error);
+    }
   };
 
   // Delete/Cancel booking
   const handleDeleteBooking = (bookingId: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus atau membatalkan pengajuan peminjaman ini?')) {
       const bToDelete = bookings.find(b => b.id === bookingId);
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
-      
-      pushNotification(
-        'Pengajuan Dihapus',
-        `Catatan peminjaman "${bToDelete?.kegiatan || 'Peminjaman'}" telah dihapus secara permanen dari basis data.`,
-        'alert'
-      );
+      if (bToDelete) {
+        deleteBookingDoc(bookingId).then(() => {
+          pushNotification(
+            'Pengajuan Dihapus',
+            `Catatan peminjaman "${bToDelete.kegiatan || 'Peminjaman'}" telah dihapus secara permanen dari basis data.`,
+            'alert'
+          );
+        }).catch(console.error);
+      }
     }
   };
 
@@ -261,23 +253,23 @@ export default function App() {
     tanggalSelesai: string, 
     jamSelesai: string
   ): { success: boolean; message: string } => {
-    setBookings(prev => prev.map(b => {
-      if (b.id === bookingId) {
+    const b = bookings.find(item => item.id === bookingId);
+    if (b) {
+      const updated = {
+        ...b,
+        tanggal_mulai: tanggalMulai,
+        jam_mulai: jamMulai,
+        tanggal_selesai: tanggalSelesai,
+        jam_selesai: jamSelesai
+      };
+      addOrUpdateBooking(updated).then(() => {
         pushNotification(
           'Jadwal Penyesuaian Sukses',
           `Jadwal untuk kegiatan "${b.kegiatan}" disesuaikan ke tanggal ${tanggalMulai} pukul ${jamMulai} WIB.`,
           'info'
         );
-        return {
-          ...b,
-          tanggal_mulai: tanggalMulai,
-          jam_mulai: jamMulai,
-          tanggal_selesai: tanggalSelesai,
-          jam_selesai: jamSelesai
-        };
-      }
-      return b;
-    }));
+      }).catch(console.error);
+    }
 
     return { success: true, message: 'Booking time successfully rescheduled!' };
   };
@@ -291,21 +283,23 @@ export default function App() {
       id: generatedId
     };
 
-    setVehicles(prev => [...prev, fullVehicle]);
-    pushNotification(
-      'Armada Sekolah Ditambahkan',
-      `Mobil ${newVehicle.nama_kendaraan} siap dijadwalkan dalam aplikasi SCB-GO.`,
-      'success'
-    );
+    addOrUpdateVehicle(fullVehicle).then(() => {
+      pushNotification(
+        'Armada Sekolah Ditambahkan',
+        `Mobil ${newVehicle.nama_kendaraan} siap dijadwalkan dalam aplikasi SCB-GO.`,
+        'success'
+      );
+    }).catch(console.error);
   };
 
   const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
-    setVehicles(prev => prev.map(v => v.id === updatedVehicle.id ? updatedVehicle : v));
-    pushNotification(
-      'Armada Diperbarui',
-      `Informasi spesifikasi armada ${updatedVehicle.nama_kendaraan} berhasil diselaraskan.`,
-      'info'
-    );
+    addOrUpdateVehicle(updatedVehicle).then(() => {
+      pushNotification(
+        'Armada Diperbarui',
+        `Informasi spesifikasi armada ${updatedVehicle.nama_kendaraan} berhasil diselaraskan.`,
+        'info'
+      );
+    }).catch(console.error);
   };
 
   const handleDeleteVehicle = (vehicleId: string) => {
@@ -319,13 +313,15 @@ export default function App() {
 
     if (confirm('Apakah Anda yakin ingin menghapus data kendaraan ini secara permanen dari sistem?')) {
       const vToDelete = vehicles.find(v => v.id === vehicleId);
-      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
-
-      pushNotification(
-        'Armada Dihapus',
-        `Data mobil ${vToDelete?.nama_kendaraan || 'Kendaraan'} telah dibersihkan dari database Sarpras.`,
-        'alert'
-      );
+      if (vToDelete) {
+        deleteVehicleDoc(vehicleId).then(() => {
+          pushNotification(
+            'Armada Dihapus',
+            `Data mobil ${vToDelete.nama_kendaraan || 'Kendaraan'} telah dibersihkan dari database Sarpras.`,
+            'alert'
+          );
+        }).catch(console.error);
+      }
     }
   };
 

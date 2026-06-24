@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile, AppRole } from '../types';
+import { subscribeUsers, addOrUpdateUser } from '../lib/firebase';
 import { 
   ShieldCheck, 
   UserPlus, 
@@ -80,17 +81,21 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
     }
   ];
 
-  // Load existing accounts from localStorage or initialize with presets
+  const [users, setUsers] = useState<UserProfile[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeUsers((firestoreUsers) => {
+      setUsers(firestoreUsers);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load existing accounts from Firestore or initialize with presets
   const getRegisteredUsers = (): UserProfile[] => {
-    const saved = localStorage.getItem('scb_registered_users');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error(e);
-      }
+    if (users.length > 0) {
+      return users;
     }
-    // Return presets as initial users
+    // Return presets as initial users fallback
     return presets.map(p => ({
       email: p.email,
       nama: p.nama,
@@ -100,8 +105,11 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
     }));
   };
 
-  const saveRegisteredUsers = (users: UserProfile[]) => {
-    localStorage.setItem('scb_registered_users', JSON.stringify(users));
+  const saveRegisteredUsers = (updatedUsers: UserProfile[]) => {
+    // Save to Firestore
+    updatedUsers.forEach((u) => {
+      addOrUpdateUser(u).catch(err => console.error('Error saving user to Firestore:', err));
+    });
   };
 
   const handleLogin = (e: React.FormEvent) => {

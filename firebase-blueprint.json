@@ -1,0 +1,58 @@
+{
+  "collections": {
+    "vehicles": {
+      "description": "Daftar armada kendaraan operasional Sekolah Cendekia BAZNAS",
+      "fields": {
+        "id": "string",
+        "nama_kendaraan": "string",
+        "nomor_polisi": "string",
+        "jenis": "string",
+        "kapasitas": "number",
+        "status": "string",
+        "foto": "string"
+      }
+    },
+    "bookings": {
+      "description": "Daftar pengajuan peminjaman kendaraan",
+      "fields": {
+        "id": "string",
+        "kendaraan_id": "string",
+        "pemohon": "string",
+        "penanggung_jawab": "string",
+        "jabatan": "string",
+        "kegiatan": "string",
+        "tujuan": "string",
+        "tanggal_mulai": "string",
+        "tanggal_selesai": "string",
+        "jam_mulai": "string",
+        "jam_selesai": "string",
+        "jumlah_penumpang": "number",
+        "daftar_penumpang": "array (string)",
+        "keterangan_tambahan": "string",
+        "status": "string",
+        "created_at": "string"
+      }
+    },
+    "notifications": {
+      "description": "Daftar notifikasi dan pengumuman sistem",
+      "fields": {
+        "id": "string",
+        "title": "string",
+        "message": "string",
+        "timestamp": "string",
+        "isRead": "boolean",
+        "type": "string"
+      }
+    },
+    "users": {
+      "description": "Daftar profil pengguna / akun terdaftar",
+      "fields": {
+        "email": "string",
+        "nama": "string",
+        "jabatan": "string",
+        "role": "string",
+        "password": "string"
+      }
+    }
+  }
+}
