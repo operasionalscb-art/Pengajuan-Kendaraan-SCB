@@ -13,7 +13,7 @@ import {
   X,
   Bell
 } from 'lucide-react';
-import { AppRole } from '../types';
+import { AppRole, UserProfile } from '../types';
 
 interface SidebarProps {
   currentTab: string;
@@ -22,6 +22,8 @@ interface SidebarProps {
   setCurrentRole: (role: AppRole) => void;
   pendingApprovalsCount: number;
   unreadNotificationsCount: number;
+  currentUser: UserProfile | null;
+  onLogout: () => void;
 }
 
 export default function Sidebar({
@@ -30,7 +32,9 @@ export default function Sidebar({
   currentRole,
   setCurrentRole,
   pendingApprovalsCount,
-  unreadNotificationsCount
+  unreadNotificationsCount,
+  currentUser,
+  onLogout
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -48,7 +52,12 @@ export default function Sidebar({
   };
 
   const toggleRole = () => {
-    setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin');
+    if (currentUser && currentUser.role === 'Admin') {
+      setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin');
+    } else {
+      setCurrentTab('login');
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -127,9 +136,12 @@ export default function Sidebar({
           <button
             type="button"
             onClick={toggleRole}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white text-scb-green hover:bg-scb-light-green border border-gray-150 active:scale-[98%] font-semibold text-xs rounded-lg transition-all shadow-sm cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white text-scb-green hover:bg-scb-light-green border border-gray-150 active:scale-[98%] font-semibold text-xs rounded-lg transition-all shadow-sm cursor-pointer animate-pulse"
           >
-            Aktifkan {currentRole === 'Admin' ? 'Pemohon / Pegawai' : 'Admin Sarpras'}
+            {currentUser && currentUser.role === 'Admin' 
+              ? `Simulasi: ${currentRole === 'Admin' ? 'Mode Pemohon' : 'Mode Admin'}`
+              : 'Login Super Admin'
+            }
           </button>
         </div>
 
@@ -175,19 +187,38 @@ export default function Sidebar({
 
         {/* Account Profile Area */}
         <div className="p-4 border-t border-gray-100 bg-white shrink-0">
-          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl overflow-hidden">
+          <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl overflow-hidden mb-2.5">
             <div className="w-8 h-8 rounded-full bg-scb-green flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {currentRole === 'Admin' ? 'A' : 'P'}
+              {currentUser ? currentUser.nama.charAt(0).toUpperCase() : 'T'}
             </div>
-            <div className="overflow-hidden text-left">
+            <div className="overflow-hidden text-left flex-1">
               <p className="text-xs font-bold truncate text-gray-900">
-                {currentRole === 'Admin' ? 'Admin Sarpras SCB' : 'Pegawai Cendekia'}
+                {currentUser ? currentUser.nama : 'Pegawai Cendekia (Tamu)'}
               </p>
               <p className="text-[10px] text-gray-500 truncate">
-                {currentRole === 'Admin' ? 'admin@scbaznas.sch.id' : 'pegawai@baznas.sch.id'}
+                {currentUser ? currentUser.email : 'guest@baznas.sch.id'}
               </p>
             </div>
           </div>
+          
+          {currentUser ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-red-50 hover:bg-red-100 text-red-650 hover:text-red-750 active:scale-[98%] font-semibold text-xs rounded-lg transition-all cursor-pointer border border-red-200"
+            >
+              Log Out / Keluar Akun
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCurrentTab('login')}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-scb-light-green hover:bg-scb-green hover:text-white text-scb-green active:scale-[98%] font-semibold text-xs rounded-lg transition-all cursor-pointer border border-emerald-200"
+            >
+              Masuk Super Admin
+            </button>
+          )}
+          
           <div className="mt-2 text-center text-[10px] text-gray-400">
             <span>Kab. Bogor, Jawa Barat</span>
           </div>

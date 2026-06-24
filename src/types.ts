@@ -40,3 +40,10 @@ export interface AppNotification {
 }
 
 export type AppRole = 'Pemohon' | 'Admin';
+
+export interface UserProfile {
+  email: string;
+  nama: string;
+  jabatan: string;
+  role: AppRole;
+}

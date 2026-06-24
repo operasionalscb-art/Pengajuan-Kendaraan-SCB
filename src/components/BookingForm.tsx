@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vehicle, Booking, BookingStatus } from '../types';
+import { Vehicle, Booking, BookingStatus, UserProfile } from '../types';
 import { checkBookingConflict, parseDateTime } from '../utils/bookingUtils';
 import { 
   Car, 
@@ -20,9 +20,10 @@ interface BookingFormProps {
   bookings: Booking[];
   onSubmitBooking: (booking: Omit<Booking, 'id' | 'created_at'>, asStatus: BookingStatus) => { success: boolean; message: string };
   onSuccess: () => void;
+  currentUser?: UserProfile | null;
 }
 
-export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuccess }: BookingFormProps) {
+export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuccess, currentUser }: BookingFormProps) {
   // Field values
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
@@ -32,6 +33,14 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
   
   const [penanggungJawab, setPenanggungJawab] = useState('');
   const [jabatan, setJabatan] = useState('');
+
+  // Auto-prefill penanggungJawab and jabatan if currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setPenanggungJawab(currentUser.nama);
+      setJabatan(currentUser.jabatan);
+    }
+  }, [currentUser]);
   const [kegiatan, setKegiatan] = useState('');
   const [tujuan, setTujuan] = useState('');
   const [keteranganTambahan, setKeteranganTambahan] = useState('');

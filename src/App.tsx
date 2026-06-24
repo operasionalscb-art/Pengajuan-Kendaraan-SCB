@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vehicle, Booking, AppNotification, AppRole, BookingStatus } from './types';
+import { Vehicle, Booking, AppNotification, AppRole, BookingStatus, UserProfile } from './types';
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from './mockData';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -8,6 +8,7 @@ import BookingHistory from './components/BookingHistory';
 import VehicleManager from './components/VehicleManager';
 import ReportsView from './components/ReportsView';
 import CalendarView from './components/CalendarView';
+import AuthScreen from './components/AuthScreen';
 
 import { 
   Bell, 
@@ -39,11 +40,27 @@ export default function App() {
     return INITIAL_BOOKINGS;
   });
 
+  // User session state
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const saved = localStorage.getItem('scb_active_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return null;
+  });
+
   // Role management state -> Default to Pemohon/Pegawai but allows direct switching to Admin in sidebar
   const [currentRole, setCurrentRole] = useState<AppRole>(() => {
     const saved = localStorage.getItem('scb_role');
     return (saved as AppRole) || 'Pemohon';
   });
+
+  // Sync currentRole with currentUser's role when it changes
+  useEffect(() => {
+    if (currentUser) {
+      setCurrentRole(currentUser.role);
+    }
+  }, [currentUser]);
 
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
 
@@ -294,10 +311,41 @@ export default function App() {
     }
   };
 
+  const handleLoginSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    localStorage.setItem('scb_active_user', JSON.stringify(user));
+    setCurrentRole(user.role);
+    setCurrentTab('dashboard');
+    pushNotification(
+      'Masuk Berhasil',
+      `Selamat datang, ${user.nama} (${user.jabatan}).`,
+      'success'
+    );
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('scb_active_user');
+    setCurrentUser(null);
+    setCurrentRole('Pemohon');
+    setCurrentTab('dashboard');
+    pushNotification(
+      'Keluar Akun',
+      'Anda telah keluar dari akun Super Admin. Mode akses kembali menjadi Pemohon.',
+      'info'
+    );
+  };
+
 
   // Count variables to inject inside Sidebar badges
   const pendingApprovalsCount = bookings.filter(b => b.status === 'Menunggu Persetujuan').length;
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+
+  const activeUser: UserProfile = currentUser || {
+    email: 'guest@baznas.sch.id',
+    nama: 'Pegawai Cendekia (Tamu)',
+    jabatan: 'Pegawai Sekolah',
+    role: 'Pemohon'
+  };
 
   return (
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col lg:flex-row antialiased font-sans text-neutral-800">
@@ -310,6 +358,8 @@ export default function App() {
         setCurrentRole={setCurrentRole}
         pendingApprovalsCount={pendingApprovalsCount}
         unreadNotificationsCount={unreadNotificationsCount}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Workspace viewport */}
@@ -328,8 +378,8 @@ export default function App() {
           {/* User profile & Role status widget */}
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <p className="text-xs font-bold text-neutral-700">Akun Kedinasan</p>
-              <p className="text-[10px] text-neutral-450 font-semibold">{currentRole === 'Admin' ? 'operasional.scb@gmail.com (Sarpras)' : 'pegawai.cendekia@baznas.sch.id'}</p>
+              <p className="text-xs font-bold text-neutral-700">{activeUser.nama}</p>
+              <p className="text-[10px] text-neutral-450 font-semibold">{activeUser.email} ({activeUser.jabatan})</p>
             </div>
             
             <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0F8A5F] to-emerald-400 text-white flex items-center justify-center font-bold shadow-md">
@@ -342,20 +392,36 @@ export default function App() {
         <div className="bg-[#0F8A5F]/5 border-y border-[#0F8A5F]/15 px-6 py-2.5 flex items-center justify-between text-xs text-slate-700 font-semibold">
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-[#0F8A5F] shrink-0" />
-            <span>Hak akses aktif: <strong className="text-[#0F8A5F] uppercase font-extrabold">{currentRole}</strong> • Mode simulasi memungkinkan Anda menguji pengajuan sekaligus melakukan review & persetujuan layaknya Admin.</span>
+            <span>Sesi aktif: <strong className="text-neutral-900">{activeUser.nama}</strong> • Hak akses: <strong className="text-[#0F8A5F] uppercase font-extrabold">{currentRole}</strong> • {currentUser?.role === 'Admin' ? 'Anda login sebagai Super Admin (Dapat memverifikasi/menolak ajuan).' : 'Masuk sebagai Super Admin untuk memverifikasi/menyetujui ajuan.'}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin')}
-            className="text-xs text-[#0F8A5F] hover:underline font-bold"
-          >
-            Aktifkan {currentRole === 'Admin' ? 'Pemohon' : 'Admin'}
-          </button>
+          {!currentUser ? (
+            <button
+              type="button"
+              onClick={() => setCurrentTab('login')}
+              className="text-xs text-[#0F8A5F] hover:underline font-bold"
+            >
+              Masuk Super Admin &rarr;
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin')}
+              className="text-xs text-[#0F8A5F] hover:underline font-bold"
+            >
+              Simulasi: {currentRole === 'Admin' ? 'Lihat Pemohon' : 'Lihat Admin'}
+            </button>
+          )}
         </div>
 
         {/* Dynamic Inner Tab Router */}
         <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8">
           
+          {currentTab === 'login' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <AuthScreen onLoginSuccess={handleLoginSuccess} />
+            </div>
+          )}
+
           {currentTab === 'dashboard' && (
             <div className="space-y-8 animate-in fade-in duration-150">
               <Dashboard 
@@ -383,6 +449,7 @@ export default function App() {
                 bookings={bookings}
                 onSubmitBooking={handleAddBooking}
                 onSuccess={() => setCurrentTab('riwayat')}
+                currentUser={currentUser}
               />
             </div>
           )}
