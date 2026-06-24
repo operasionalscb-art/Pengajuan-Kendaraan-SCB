@@ -114,12 +114,20 @@ export default function App() {
   }, [isDarkMode]);
 
   // H-1 booking reminder trigger
-  // Since today is 2026-06-12, tomorrow is 2026-06-13.
-  // Look for any approved bookings on 2026-06-13 to trigger H-1 reminder.
+  // Look for any approved bookings for tomorrow based on today's actual local date.
   useEffect(() => {
     if (bookings.length === 0) return;
     
-    const tomorrowStr = "2026-06-13";
+    const getTomorrowStr = () => {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const tomorrowStr = getTomorrowStr();
     const tomorrowBooking = bookings.find(b => b.tanggal_mulai === tomorrowStr && b.status === 'Disetujui');
     
     // Check if reminder already exists to avoid spamming
@@ -129,11 +137,14 @@ export default function App() {
     if (tomorrowBooking && !alreadyExists) {
       const v = vehicles.find(car => car.id === tomorrowBooking.kendaraan_id);
       
+      const d = new Date();
+      const timestampStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} 08:00`;
+      
       const newReminder: AppNotification = {
         id: reminderId,
         title: 'Pengingat H-1 Keberangkatan',
         message: `PERINGATAN H-1: Peminjaman ${v?.nama_kendaraan || 'Kendaraan'} untuk kegiatan "${tomorrowBooking.kegiatan}" akan dimulai besok (${tomorrowBooking.tanggal_mulai}). Mohon koordinasi kelengkapan surat jalan.`,
-        timestamp: '12-06 08:00',
+        timestamp: timestampStr,
         isRead: false,
         type: 'warning'
       };

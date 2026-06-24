@@ -39,8 +39,15 @@ export default function Dashboard({
   onMarkNotificationRead,
   onNavigateToTab
 }: DashboardProps) {
-  // Today's date is locked to 2026-06-12 as parsed from local timestamp metadata
-  const TODAY_STR = "2026-06-12";
+  // Today's date is computed dynamically from the actual local date
+  const getTodayStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const TODAY_STR = getTodayStr();
 
   // Calculations for Ringkasan cards:
   // 1. Total available vehicles (Status is 'Tersedia' OR actually ready)

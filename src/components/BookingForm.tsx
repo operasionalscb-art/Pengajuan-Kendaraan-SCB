@@ -28,10 +28,21 @@ interface BookingFormProps {
 }
 
 export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuccess, currentUser }: BookingFormProps) {
+  // Get current local date in YYYY-MM-DD format
+  const getTodayStr = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getTodayStr();
+
   // Field values
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
-  const [tanggalMulai, setTanggalMulai] = useState('');
-  const [tanggalSelesai, setTanggalSelesai] = useState('');
+  const [tanggalMulai, setTanggalMulai] = useState(todayStr);
+  const [tanggalSelesai, setTanggalSelesai] = useState(todayStr);
   const [jamMulai, setJamMulai] = useState('08:00');
   const [jamSelesai, setJamSelesai] = useState('17:00');
   
@@ -74,8 +85,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
     setSubmittedBookingData(null);
     setSuccessMsg('');
     setSelectedVehicleId('');
-    setTanggalMulai('');
-    setTanggalSelesai('');
+    setTanggalMulai(todayStr);
+    setTanggalSelesai(todayStr);
     if (currentUser) {
       setPenanggungJawab(currentUser.nama);
       setJabatan(currentUser.jabatan);

@@ -10,10 +10,9 @@ interface CalendarViewProps {
 export default function CalendarView({ bookings, vehicles }: CalendarViewProps) {
   const currentRealDate = new Date();
   
-  // Default to June 2026 to fit mock data perfectly, or current date if out of range.
-  // Setting default month to June (index 5) and year to 2026.
-  const [currentMonth, setCurrentMonth] = useState(5); // 0-indexed (June)
-  const [currentYear, setCurrentYear] = useState(2026);
+  // Default dynamically to current month and year
+  const [currentMonth, setCurrentMonth] = useState(currentRealDate.getMonth());
+  const [currentYear, setCurrentYear] = useState(currentRealDate.getFullYear());
   const [selectedVehicleFilter, setSelectedVehicleFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
