@@ -1,0 +1,6 @@
+{
+  "name": "SCB-GO",
+  "description": "Aplikasi manajemen peminjaman kendaraan operasional Sekolah Cendekia BAZNAS untuk mengatur pengajuan penggunaan kendaraan kantor dan mencegah bentrokan jadwal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

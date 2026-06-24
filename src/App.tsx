@@ -1,0 +1,429 @@
+import React, { useState, useEffect } from 'react';
+import { Vehicle, Booking, AppNotification, AppRole, BookingStatus } from './types';
+import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from './mockData';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import BookingForm from './components/BookingForm';
+import BookingHistory from './components/BookingHistory';
+import VehicleManager from './components/VehicleManager';
+import ReportsView from './components/ReportsView';
+import CalendarView from './components/CalendarView';
+
+import { 
+  Bell, 
+  MapPin, 
+  Clock, 
+  ShieldAlert, 
+  Info, 
+  LogOut, 
+  Activity,
+  Menu,
+  ChevronDown
+} from 'lucide-react';
+
+export default function App() {
+  // 1. Core State Managers backed by LocalStorage
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    const saved = localStorage.getItem('scb_vehicles');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return INITIAL_VEHICLES;
+  });
+
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    const saved = localStorage.getItem('scb_bookings');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return INITIAL_BOOKINGS;
+  });
+
+  // Role management state -> Default to Pemohon/Pegawai but allows direct switching to Admin in sidebar
+  const [currentRole, setCurrentRole] = useState<AppRole>(() => {
+    const saved = localStorage.getItem('scb_role');
+    return (saved as AppRole) || 'Pemohon';
+  });
+
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
+
+  // Notification management state
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('scb_notifications');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      {
+        id: 'N-001',
+        title: 'Selamat Datang di SCB-GO!',
+        message: 'Aplikasi manajemen peminjaman kendaraan operasional Sekolah Cendekia BAZNAS aktif dan siap melayani pengajuan Anda.',
+        timestamp: '12-06 00:00',
+        isRead: false,
+        type: 'info'
+      },
+      {
+        id: 'N-002',
+        title: 'Pengajuan Selesai Diinput',
+        message: 'Lomba Pramuka kesiswaan menggunakan Isuzu Elf Long telah disetujui untuk keberangkatan pagi ini.',
+        timestamp: '12-06 07:00',
+        isRead: false,
+        type: 'success'
+      }
+    ];
+  });
+
+  // H-1 booking reminder trigger
+  // Since today is 2026-06-12, tomorrow is 2026-06-13.
+  // Look for any approved bookings on 2026-06-13 to trigger H-1 reminder.
+  useEffect(() => {
+    const tomorrowStr = "2026-06-13";
+    const tomorrowBooking = bookings.find(b => b.tanggal_mulai === tomorrowStr && b.status === 'Disetujui');
+    
+    // Check if reminder already exists to avoid spamming
+    const reminderId = `REMIND-${tomorrowStr}`;
+    const alreadyExists = notifications.some(n => n.id === reminderId);
+
+    if (tomorrowBooking && !alreadyExists) {
+      const v = vehicles.find(car => car.id === tomorrowBooking.kendaraan_id);
+      
+      const newReminder: AppNotification = {
+        id: reminderId,
+        title: 'Pengingat H-1 Keberangkatan',
+        message: `PERINGATAN H-1: Peminjaman ${v?.nama_kendaraan || 'Kendaraan'} untuk kegiatan "${tomorrowBooking.kegiatan}" akan dimulai besok (${tomorrowBooking.tanggal_mulai}). Mohon koordinasi kelengkapan surat jalan.`,
+        timestamp: '12-06 08:00',
+        isRead: false,
+        type: 'warning'
+      };
+
+      setNotifications(prev => [newReminder, ...prev]);
+    }
+  }, [bookings, vehicles, notifications]);
+
+  // Persists states whenever they alter
+  useEffect(() => {
+    localStorage.setItem('scb_vehicles', JSON.stringify(vehicles));
+  }, [vehicles]);
+
+  useEffect(() => {
+    localStorage.setItem('scb_bookings', JSON.stringify(bookings));
+  }, [bookings]);
+
+  useEffect(() => {
+    localStorage.setItem('scb_role', currentRole);
+  }, [currentRole]);
+
+  useEffect(() => {
+    localStorage.setItem('scb_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Handle addition of standard notification utilities
+  const pushNotification = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'alert') => {
+    const timestampStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const formattedDate = new Date().toLocaleDateString('id-ID', { month: '2-digit', day: '2-digit' }).replace('/', '-');
+
+    const nw: AppNotification = {
+      id: `NOTIF-${Date.now()}`,
+      title,
+      message,
+      timestamp: `${formattedDate} ${timestampStr}`,
+      isRead: false,
+      type
+    };
+
+    setNotifications(prev => [nw, ...prev]);
+  };
+
+  const handleClearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleMarkNotificationRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+
+  // 2. Booking CRUD handlers
+  const handleAddBooking = (
+    newBooking: Omit<Booking, 'id' | 'created_at'>, 
+    asStatus: BookingStatus
+  ): { success: boolean; message: string } => {
+    const generatedId = `B-${Date.now()}`;
+    const fullBooking: Booking = {
+      ...newBooking,
+      id: generatedId,
+      created_at: new Date().toISOString()
+    };
+
+    setBookings(prev => [fullBooking, ...prev]);
+
+    // Send visual notification card
+    const targetVehicle = vehicles.find(v => v.id === newBooking.kendaraan_id);
+    if (asStatus === 'Draft') {
+      pushNotification(
+        'Pengajuan Disimpan ke Draft',
+        `Peminjaman armada ${targetVehicle?.nama_kendaraan || 'sekolah'} disimpan sebagai draft sementara.`,
+        'info'
+      );
+    } else {
+      pushNotification(
+        'Pengajuan Baru Terdaftar',
+        `Pengajuan oleh ${newBooking.penanggung_jawab} untuk kegiatan "${newBooking.kegiatan}" terdaftar & menunggu peninjauan Sarpras.`,
+        'warning'
+      );
+    }
+
+    return { success: true, message: 'Booking successfully added!' };
+  };
+
+  // Update administrative booking status
+  const handleUpdateBookingStatus = (bookingId: string, newStatus: BookingStatus) => {
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        const titleText = `Status Pengajuan Diperbarui`;
+        const v = vehicles.find(car => car.id === b.kendaraan_id);
+        
+        let messageText = `Pengajuan kegiatan "${b.kegiatan}" diubah statusnya menjadi ${newStatus}.`;
+        let notifType: 'info' | 'success' | 'warning' | 'alert' = 'info';
+
+        if (newStatus === 'Disetujui') {
+          messageText = `Peminjaman ${v?.nama_kendaraan || 'Kendaraan'} untuk kegiatan "${b.kegiatan}" telah DISETUJUI oleh Admin Sarpras.`;
+          notifType = 'success';
+        } else if (newStatus === 'Ditolak') {
+          messageText = `Pengajuan kendaraan untuk kegiatan "${b.kegiatan}" DITOLAK oleh Admin Sarpras karena waktu bentrok/keperluan lain.`;
+          notifType = 'alert';
+        } else if (newStatus === 'Selesai') {
+          messageText = `Perjalanan armada ${v?.nama_kendaraan || 'Kendaraan'} selesai. Kunci kontak serta STNK telah diserahterimakan kembali.`;
+          notifType = 'info';
+        }
+
+        pushNotification(titleText, messageText, notifType);
+        return { ...b, status: newStatus };
+      }
+      return b;
+    }));
+  };
+
+  // Delete/Cancel booking
+  const handleDeleteBooking = (bookingId: string) => {
+    if (confirm('Apakah Anda yakin ingin menghapus atau membatalkan pengajuan peminjaman ini?')) {
+      const bToDelete = bookings.find(b => b.id === bookingId);
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      
+      pushNotification(
+        'Pengajuan Dihapus',
+        `Catatan peminjaman "${bToDelete?.kegiatan || 'Peminjaman'}" telah dihapus secara permanen dari basis data.`,
+        'alert'
+      );
+    }
+  };
+
+  // Shift/reschedule booking timeline
+  const handleUpdateBookingTime = (
+    bookingId: string, 
+    tanggalMulai: string, 
+    jamMulai: string, 
+    tanggalSelesai: string, 
+    jamSelesai: string
+  ): { success: boolean; message: string } => {
+    setBookings(prev => prev.map(b => {
+      if (b.id === bookingId) {
+        pushNotification(
+          'Jadwal Penyesuaian Sukses',
+          `Jadwal untuk kegiatan "${b.kegiatan}" disesuaikan ke tanggal ${tanggalMulai} pukul ${jamMulai} WIB.`,
+          'info'
+        );
+        return {
+          ...b,
+          tanggal_mulai: tanggalMulai,
+          jam_mulai: jamMulai,
+          tanggal_selesai: tanggalSelesai,
+          jam_selesai: jamSelesai
+        };
+      }
+      return b;
+    }));
+
+    return { success: true, message: 'Booking time successfully rescheduled!' };
+  };
+
+
+  // 3. Vehicle Master data handler modifiers (Admin-Only functions)
+  const handleAddVehicle = (newVehicle: Omit<Vehicle, 'id'>) => {
+    const generatedId = `V00${vehicles.length + 1}`;
+    const fullVehicle: Vehicle = {
+      ...newVehicle,
+      id: generatedId
+    };
+
+    setVehicles(prev => [...prev, fullVehicle]);
+    pushNotification(
+      'Armada Sekolah Ditambahkan',
+      `Mobil ${newVehicle.nama_kendaraan} siap dijadwalkan dalam aplikasi SCB-GO.`,
+      'success'
+    );
+  };
+
+  const handleUpdateVehicle = (updatedVehicle: Vehicle) => {
+    setVehicles(prev => prev.map(v => v.id === updatedVehicle.id ? updatedVehicle : v));
+    pushNotification(
+      'Armada Diperbarui',
+      `Informasi spesifikasi armada ${updatedVehicle.nama_kendaraan} berhasil diselaraskan.`,
+      'info'
+    );
+  };
+
+  const handleDeleteVehicle = (vehicleId: string) => {
+    // Check if any booking is scheduled for this vehicle
+    const activeAttachedBookings = bookings.filter(b => b.kendaraan_id === vehicleId && b.status !== 'Selesai' && b.status !== 'Ditolak');
+
+    if (activeAttachedBookings.length > 0) {
+      alert(`KENDARAAN SEDANG DIGUNAKAN: Mobil ini masih memiliki ${activeAttachedBookings.length} jadwal pemesanan aktif. Mohon batalkan/selesaikan jadwal sebelum menghapus.`);
+      return;
+    }
+
+    if (confirm('Apakah Anda yakin ingin menghapus data kendaraan ini secara permanen dari sistem?')) {
+      const vToDelete = vehicles.find(v => v.id === vehicleId);
+      setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+
+      pushNotification(
+        'Armada Dihapus',
+        `Data mobil ${vToDelete?.nama_kendaraan || 'Kendaraan'} telah dibersihkan dari database Sarpras.`,
+        'alert'
+      );
+    }
+  };
+
+
+  // Count variables to inject inside Sidebar badges
+  const pendingApprovalsCount = bookings.filter(b => b.status === 'Menunggu Persetujuan').length;
+  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+
+  return (
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col lg:flex-row antialiased font-sans text-neutral-800">
+      
+      {/* Sidebar navigation system */}
+      <Sidebar 
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
+        currentRole={currentRole}
+        setCurrentRole={setCurrentRole}
+        pendingApprovalsCount={pendingApprovalsCount}
+        unreadNotificationsCount={unreadNotificationsCount}
+      />
+
+      {/* Main Content Workspace viewport */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+        
+        {/* Desktop Top Nav Header */}
+        <header className="hidden lg:flex items-center justify-between h-20 bg-white px-8 border-b border-neutral-150 shrink-0 select-none">
+          <div>
+            <h1 className="text-xl font-black text-neutral-800 tracking-tight flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-[#0F8A5F] rounded-full inline-block" />
+              SCB-GO <span className="text-xs text-[#0F8A5F] bg-green-50 px-2 py-0.5 rounded-full font-extrabold tracking-normal">Sekolah Cendekia BAZNAS</span>
+            </h1>
+            <p className="text-xs text-neutral-400 font-medium">Sistem Pembeda & Manajemen Peminjaman Operasional Sekolah anti Bentrok</p>
+          </div>
+
+          {/* User profile & Role status widget */}
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="text-xs font-bold text-neutral-700">Akun Kedinasan</p>
+              <p className="text-[10px] text-neutral-450 font-semibold">{currentRole === 'Admin' ? 'operasional.scb@gmail.com (Sarpras)' : 'pegawai.cendekia@baznas.sch.id'}</p>
+            </div>
+            
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0F8A5F] to-emerald-400 text-white flex items-center justify-center font-bold shadow-md">
+              {currentRole === 'Admin' ? 'ADM' : 'PEM'}
+            </div>
+          </div>
+        </header>
+
+        {/* Informational Role Indicator banner overlay */}
+        <div className="bg-[#0F8A5F]/5 border-y border-[#0F8A5F]/15 px-6 py-2.5 flex items-center justify-between text-xs text-slate-700 font-semibold">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-[#0F8A5F] shrink-0" />
+            <span>Hak akses aktif: <strong className="text-[#0F8A5F] uppercase font-extrabold">{currentRole}</strong> • Mode simulasi memungkinkan Anda menguji pengajuan sekaligus melakukan review & persetujuan layaknya Admin.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentRole(currentRole === 'Admin' ? 'Pemohon' : 'Admin')}
+            className="text-xs text-[#0F8A5F] hover:underline font-bold"
+          >
+            Aktifkan {currentRole === 'Admin' ? 'Pemohon' : 'Admin'}
+          </button>
+        </div>
+
+        {/* Dynamic Inner Tab Router */}
+        <div className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto space-y-8">
+          
+          {currentTab === 'dashboard' && (
+            <div className="space-y-8 animate-in fade-in duration-150">
+              <Dashboard 
+                vehicles={vehicles}
+                bookings={bookings}
+                notifications={notifications}
+                currentRole={currentRole}
+                onClearNotifications={handleClearNotifications}
+                onMarkNotificationRead={handleMarkNotificationRead}
+                onNavigateToTab={setCurrentTab}
+              />
+              
+              {/* Embed Calendar directly in Dashboard so users get both the statistical insight and real-time calendaring immediately */}
+              <CalendarView 
+                bookings={bookings} 
+                vehicles={vehicles} 
+              />
+            </div>
+          )}
+
+          {currentTab === 'pengajuan' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <BookingForm 
+                vehicles={vehicles}
+                bookings={bookings}
+                onSubmitBooking={handleAddBooking}
+                onSuccess={() => setCurrentTab('riwayat')}
+              />
+            </div>
+          )}
+
+          {currentTab === 'riwayat' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <BookingHistory 
+                bookings={bookings}
+                vehicles={vehicles}
+                currentRole={currentRole}
+                onUpdateStatus={handleUpdateBookingStatus}
+                onDeleteBooking={handleDeleteBooking}
+                onUpdateBookingTime={handleUpdateBookingTime}
+              />
+            </div>
+          )}
+
+          {currentTab === 'kendaraan' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <VehicleManager 
+                vehicles={vehicles}
+                onAddVehicle={handleAddVehicle}
+                onUpdateVehicle={handleUpdateVehicle}
+                onDeleteVehicle={handleDeleteVehicle}
+              />
+            </div>
+          )}
+
+          {currentTab === 'laporan' && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <ReportsView 
+                bookings={bookings}
+                vehicles={vehicles}
+              />
+            </div>
+          )}
+
+        </div>
+
+      </main>
+
+    </div>
+  );
+}
