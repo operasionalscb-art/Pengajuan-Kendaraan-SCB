@@ -46,4 +46,5 @@ export interface UserProfile {
   nama: string;
   jabatan: string;
   role: AppRole;
+  password?: string;
 }

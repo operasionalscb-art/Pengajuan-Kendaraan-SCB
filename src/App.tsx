@@ -418,7 +418,11 @@ export default function App() {
           
           {currentTab === 'login' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <AuthScreen onLoginSuccess={handleLoginSuccess} />
+              <AuthScreen 
+                onLoginSuccess={handleLoginSuccess} 
+                currentUser={currentUser}
+                onLogout={handleLogout}
+              />
             </div>
           )}
 
