@@ -80,7 +80,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     const saved = localStorage.getItem('scb_active_user');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try { 
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.role === 'Admin' || parsed.role === 'Super Admin')) {
+          parsed.role = 'Super Admin';
+        }
+        return parsed;
+      } catch (e) { console.error(e); }
     }
     return null;
   });
@@ -88,6 +94,9 @@ export default function App() {
   // Role management state -> Default to Pemohon/Pegawai but allows direct switching to Admin in sidebar
   const [currentRole, setCurrentRole] = useState<AppRole>(() => {
     const saved = localStorage.getItem('scb_role');
+    if (saved === 'Admin' || saved === 'Super Admin') {
+      return 'Super Admin';
+    }
     return (saved as AppRole) || 'Pemohon';
   });
 
@@ -495,6 +504,7 @@ export default function App() {
                 onClearNotifications={handleClearNotifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onNavigateToTab={setCurrentTab}
+                currentUser={currentUser}
               />
               
               {/* Embed Calendar directly in Dashboard so users get both the statistical insight and real-time calendaring immediately */}
@@ -572,7 +582,7 @@ export default function App() {
             </div>
           )}
 
-          {currentTab === 'pengguna' && (
+          {currentTab === 'pengguna' && currentRole === 'Super Admin' && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <AccountManager 
                 currentUser={currentUser}

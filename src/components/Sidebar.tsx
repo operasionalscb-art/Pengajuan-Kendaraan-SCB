@@ -46,8 +46,8 @@ export default function Sidebar({
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
-    { id: 'pengajuan', label: 'Buat Pengajuan', icon: PlusCircle },
-    { id: 'riwayat', label: 'Riwayat Peminjaman', icon: History },
+    { id: 'pengajuan', label: 'Buat Pengajuan', icon: PlusCircle, registeredOnly: true },
+    { id: 'riwayat', label: 'Riwayat Peminjaman', icon: History, registeredOnly: true },
     { id: 'kendaraan', label: 'Master Kendaraan', icon: Car, adminOnly: true },
     { id: 'pengguna', label: 'Akses & Akun', icon: Users, superAdminOnly: true },
     { id: 'laporan', label: 'Laporan & Statistik', icon: BarChart2 },
@@ -152,6 +152,10 @@ export default function Sidebar({
         {/* Navigation Items */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
           {menuItems.map((item) => {
+            // Check if item is registeredOnly and there is no active user session
+            if ((item as any).registeredOnly && !currentUser) {
+              return null;
+            }
             // Check if item is superAdminOnly
             if (item.superAdminOnly && currentRole !== 'Super Admin') {
               return null;
@@ -221,9 +225,9 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setCurrentTab('login')}
-              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-scb-light-green dark:bg-emerald-950/30 hover:bg-scb-green hover:text-white dark:hover:bg-scb-green dark:hover:text-neutral-100 text-scb-green dark:text-emerald-400 active:scale-[98%] font-semibold text-xs rounded-lg transition-all cursor-pointer border border-emerald-250 dark:border-emerald-900/40"
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-[#0F8A5F] hover:bg-[#0D7752] active:scale-[98%] text-white text-xs font-bold rounded-lg transition-all cursor-pointer shadow-md"
             >
-              Masuk Akun
+              Masuk / Daftar Akun
             </button>
           )}
           

@@ -38,6 +38,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
   const [formJabatan, setFormJabatan] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<AppRole>('Pemohon');
+  const [formStatus, setFormStatus] = useState<'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak'>('Disetujui');
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -57,6 +58,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     setFormJabatan('');
     setFormPassword('');
     setFormRole('Pemohon');
+    setFormStatus('Disetujui');
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
@@ -69,9 +71,27 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     setFormJabatan(user.jabatan);
     setFormPassword(user.password || 'pegawai123');
     setFormRole(user.role);
+    setFormStatus(user.status || 'Disetujui');
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
+  };
+
+  const handleApproveUser = (user: UserProfile, status: 'Disetujui' | 'Ditolak') => {
+    const updatedUser: UserProfile = { 
+      ...user, 
+      status 
+    };
+    addOrUpdateUser(updatedUser).then(() => {
+      pushNotification(
+        status === 'Disetujui' ? 'Pendaftaran Disetujui' : 'Pendaftaran Ditolak',
+        `Akun ${user.nama} (${user.jabatan}) telah ${status === 'Disetujui' ? 'disetujui untuk mengakses sistem' : 'ditolak'}.`,
+        status === 'Disetujui' ? 'success' : 'alert'
+      );
+    }).catch(e => {
+      console.error(e);
+      alert('Gagal memperbarui status pendaftaran.');
+    });
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -112,7 +132,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         nama: nameClean,
         jabatan: jabatanClean,
         role: formRole,
-        password: passwordClean
+        password: passwordClean,
+        status: formStatus
       };
 
       addOrUpdateUser(newUser).then(() => {
@@ -150,7 +171,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         nama: nameClean,
         jabatan: jabatanClean,
         role: formRole,
-        password: passwordClean
+        password: passwordClean,
+        status: formStatus
       };
 
       addOrUpdateUser(updatedUser).then(() => {
@@ -235,6 +257,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     );
   });
 
+  const pendingUsers = users.filter(u => u.status === 'Menunggu Persetujuan');
+
   return (
     <div className="space-y-6 text-left">
       {/* Tab Header Banner */}
@@ -259,6 +283,65 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
           <span>Tambah Akun Baru</span>
         </button>
       </div>
+
+      {/* Pending Approvals Section */}
+      {pendingUsers.length > 0 && (
+        <div className="bg-amber-50/70 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl p-5 space-y-4 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 rounded-lg shrink-0">
+              <ShieldAlert className="w-5 h-5 animate-bounce" />
+            </span>
+            <div>
+              <h3 className="text-sm font-black text-amber-900 dark:text-amber-300">
+                Persetujuan Akun Pending ({pendingUsers.length})
+              </h3>
+              <p className="text-[11px] text-amber-700/80 dark:text-amber-400">
+                Ada pengajuan pendaftaran akun pegawai baru yang memerlukan persetujuan Anda sebelum mereka dapat masuk ke sistem.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingUsers.map((pendingUser) => (
+              <div 
+                key={pendingUser.email} 
+                className="bg-white dark:bg-neutral-900 p-4 rounded-xl border border-amber-200/30 dark:border-amber-950 flex items-center justify-between gap-4 shadow-sm"
+              >
+                <div className="space-y-1">
+                  <div className="font-bold text-xs text-gray-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    {pendingUser.nama}
+                    <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 font-extrabold rounded">
+                      {pendingUser.jabatan}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-mono block">
+                    {pendingUser.email}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleApproveUser(pendingUser, 'Disetujui')}
+                    className="flex items-center justify-center gap-1 py-1.5 px-3 bg-[#0F8A5F] hover:bg-[#0D7752] active:scale-95 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Setujui
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApproveUser(pendingUser, 'Ditolak')}
+                    className="flex items-center justify-center gap-1 py-1.5 px-3 bg-red-600 hover:bg-red-700 active:scale-95 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Tolak
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main layout container with lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -293,6 +376,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                 <tr className="bg-gray-50 dark:bg-neutral-800 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-neutral-850">
                   <th className="py-3 px-4">Nama Lengkap &amp; Email</th>
                   <th className="py-3 px-4">Jabatan</th>
+                  <th className="py-3 px-4 text-center">Status Akun</th>
                   <th className="py-3 px-4 text-center">Hak Akses</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -300,7 +384,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-850 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-gray-400 dark:text-neutral-500 font-medium">
+                    <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-neutral-500 font-medium">
                       Tidak ada akun pegawai yang cocok dengan kata pencarian.
                     </td>
                   </tr>
@@ -326,6 +410,41 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                         </td>
                         <td className="py-3.5 px-4 text-gray-600 dark:text-neutral-350 font-semibold">
                           {user.jabatan}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          {user.status === 'Menunggu Persetujuan' ? (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/40 animate-pulse">
+                                Menunggu
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveUser(user, 'Disetujui')}
+                                  className="p-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded transition-colors cursor-pointer"
+                                  title="Setujui pendaftaran"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveUser(user, 'Ditolak')}
+                                  className="p-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 rounded transition-colors cursor-pointer"
+                                  title="Tolak pendaftaran"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide border ${
+                              user.status === 'Ditolak'
+                                ? 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400 border-red-200/30'
+                                : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200/30'
+                            }`}>
+                              {user.status || 'Disetujui'}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <button
@@ -535,6 +654,51 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                     >
                       <span>Admin</span>
                       {formRole === 'Super Admin' && <Check className="w-3 h-3" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Status Akun</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormStatus('Disetujui')}
+                      className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        formStatus === 'Disetujui'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-250 dark:border-emerald-800 shadow-sm'
+                          : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
+                      }`}
+                      id="btn-form-status-disetujui"
+                    >
+                      <span>Disetujui</span>
+                      {formStatus === 'Disetujui' && <Check className="w-3 h-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormStatus('Menunggu Persetujuan')}
+                      className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        formStatus === 'Menunggu Persetujuan'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-250 dark:border-amber-800 shadow-sm'
+                          : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
+                      }`}
+                      id="btn-form-status-menunggu"
+                    >
+                      <span>Menunggu</span>
+                      {formStatus === 'Menunggu Persetujuan' && <Check className="w-3 h-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormStatus('Ditolak')}
+                      className={`py-2 px-1.5 rounded-xl text-[10px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        formStatus === 'Ditolak'
+                          ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border-red-250 dark:border-red-800 shadow-sm'
+                          : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
+                      }`}
+                      id="btn-form-status-ditolak"
+                    >
+                      <span>Ditolak</span>
+                      {formStatus === 'Ditolak' && <Check className="w-3 h-3" />}
                     </button>
                   </div>
                 </div>

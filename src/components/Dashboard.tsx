@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Booking, Vehicle, AppNotification, AppRole } from '../types';
+import { Booking, Vehicle, AppNotification, AppRole, UserProfile } from '../types';
 import { 
   Car, 
   Clock, 
@@ -28,6 +28,7 @@ interface DashboardProps {
   onClearNotifications: () => void;
   onMarkNotificationRead: (id: string) => void;
   onNavigateToTab: (tabId: string) => void;
+  currentUser: UserProfile | null;
 }
 
 export default function Dashboard({
@@ -37,7 +38,8 @@ export default function Dashboard({
   currentRole,
   onClearNotifications,
   onMarkNotificationRead,
-  onNavigateToTab
+  onNavigateToTab,
+  currentUser
 }: DashboardProps) {
   // Today's date is computed dynamically from the actual local date
   const getTodayStr = () => {
@@ -88,6 +90,30 @@ export default function Dashboard({
 
   return (
     <div className="space-y-6">
+      
+      {/* Mode Access info for Guest Users */}
+      {!currentUser && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-250 dark:border-amber-900/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in duration-150">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-400 rounded-xl shrink-0">
+              <Info className="w-5 h-5" />
+            </div>
+            <div className="text-left space-y-1">
+              <h4 className="text-xs font-bold text-amber-950 dark:text-amber-300">Akses Terbatas (Belum Masuk Akun)</h4>
+              <p className="text-[11px] text-amber-700/90 dark:text-amber-400 leading-normal">
+                Anda sedang membuka sistem dengan akses tamu. Fitur pembuatan pengajuan peminjaman kendaraan hanya tersedia bagi akun pegawai yang telah terdaftar. Silakan masuk atau daftarkan akun baru Anda.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateToTab('login')}
+            className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-650 text-white font-bold text-xs rounded-xl shadow-md transition whitespace-nowrap cursor-pointer active:scale-95"
+          >
+            Masuk / Daftar Akun
+          </button>
+        </div>
+      )}
       
       {/* Visual BAZNAS Brand Mascot Card */}
       <div className="bg-gradient-to-r from-[#0F8A5F] via-[#0D7752] to-[#0A5339] rounded-2xl p-6 text-white shadow-md relative overflow-hidden">

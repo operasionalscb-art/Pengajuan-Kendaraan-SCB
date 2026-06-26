@@ -47,4 +47,5 @@ export interface UserProfile {
   jabatan: string;
   role: AppRole;
   password?: string;
+  status?: 'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak';
 }

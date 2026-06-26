@@ -101,7 +101,10 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
   // Load existing accounts from Firestore or initialize with presets
   const getRegisteredUsers = (): UserProfile[] => {
     if (users.length > 0) {
-      return users;
+      return users.map(u => ({
+        ...u,
+        status: u.status || 'Disetujui'
+      }));
     }
     // Return presets as initial users fallback
     return presets.map(p => ({
@@ -109,7 +112,8 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       nama: p.nama,
       jabatan: p.jabatan,
       role: p.role,
-      password: p.password
+      password: p.password,
+      status: 'Disetujui'
     }));
   };
 
@@ -145,7 +149,8 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         nama: 'Super Admin Sarpras',
         jabatan: 'Kepala Bagian Sarpras',
         role: 'Super Admin',
-        password: 'admin123'
+        password: 'admin123',
+        status: 'Disetujui'
       };
       const updatedUsers = [...users, matchedUser];
       saveRegisteredUsers(updatedUsers);
@@ -158,7 +163,8 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         nama: 'Ust. Operator Sarpras',
         jabatan: 'Staf Operasional Sarpras',
         role: 'Operator',
-        password: 'operator123'
+        password: 'operator123',
+        status: 'Disetujui'
       };
       const updatedUsers = [...users, matchedUser];
       saveRegisteredUsers(updatedUsers);
@@ -172,6 +178,17 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
             ? 'operator123' 
             : 'pegawai123');
       if (correctPassword === loginPassword) {
+        // Check account approval status
+        const userStatus = matchedUser.status || 'Disetujui';
+        if (userStatus === 'Menunggu Persetujuan') {
+          setErrorMsg('Pendaftaran akun Anda sedang menunggu persetujuan (approval) oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
+          return;
+        }
+        if (userStatus === 'Ditolak') {
+          setErrorMsg('Mohon maaf, pendaftaran akun Anda telah ditolak oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
+          return;
+        }
+
         setSuccessMsg(`Selamat datang kembali, ${matchedUser.nama}!`);
         setTimeout(() => {
           onLoginSuccess(matchedUser!);
@@ -229,22 +246,36 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       determinedRole = 'Operator';
     }
 
+    const isApprovedAuto = determinedRole === 'Super Admin' || determinedRole === 'Operator';
     const newUser: UserProfile = {
       email: emailClean,
       nama: nameClean,
       jabatan: jabatanClean,
       role: determinedRole,
-      password: regPassword
+      password: regPassword,
+      status: isApprovedAuto ? 'Disetujui' : 'Menunggu Persetujuan'
     };
 
     const updatedUsers = [...users, newUser];
     saveRegisteredUsers(updatedUsers);
 
-    setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);
-    
-    setTimeout(() => {
-      onLoginSuccess(newUser);
-    }, 1000);
+    if (isApprovedAuto) {
+      setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);
+      setTimeout(() => {
+        onLoginSuccess(newUser);
+      }, 1000);
+    } else {
+      setSuccessMsg(`Pendaftaran Berhasil! Akun Anda sedang MENUNGGU PERSETUJUAN oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras untuk aktivasi.`);
+      setTimeout(() => {
+        setActiveTab('login');
+        setRegName('');
+        setRegEmail('');
+        setRegJabatan('');
+        setRegPassword('');
+        setRegPasswordConfirm('');
+        setSuccessMsg('');
+      }, 4000);
+    }
   };
 
   const handleQuickLogin = (preset: typeof presets[0]) => {
@@ -518,12 +549,12 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
           <div className="mx-auto w-12 h-12 bg-white rounded-xl flex items-center justify-center text-scb-green font-black text-2xl shadow-md mb-3">
             SC
           </div>
-          <h2 className="font-bold text-xl tracking-tight">Login Super Admin SCB-GO</h2>
+          <h2 className="font-bold text-xl tracking-tight">Portal Akun SCB-GO</h2>
           <p className="text-[11px] text-emerald-100 uppercase tracking-widest font-semibold mt-0.5">
             Sekolah Cendekia BAZNAS
           </p>
           <p className="text-xs text-emerald-50/80 mt-1.5 max-w-xs mx-auto">
-            Halaman ini digunakan untuk verifikasi login Super Admin Sarpras guna mengelola armada & persetujuan ajuan.
+            Masuk atau daftarkan akun baru Anda untuk mengakses fitur lengkap pengajuan peminjaman kendaraan operasional sekolah.
           </p>
         </div>
 
