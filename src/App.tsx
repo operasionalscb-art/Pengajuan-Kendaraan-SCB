@@ -35,7 +35,9 @@ import {
   Menu,
   ChevronDown,
   Sun,
-  Moon
+  Moon,
+  UserCheck,
+  Lock
 } from 'lucide-react';
 
 export default function App() {
@@ -396,7 +398,7 @@ export default function App() {
     setCurrentTab('dashboard');
     pushNotification(
       'Keluar Akun',
-      'Anda telah keluar dari akun Super Admin. Mode akses kembali menjadi Pemohon.',
+      'Anda telah keluar dari akun Anda. Sesi Anda kini telah berakhir.',
       'info'
     );
   };
@@ -463,7 +465,7 @@ export default function App() {
             </div>
             
             <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#0F8A5F] to-emerald-400 text-white flex items-center justify-center font-bold shadow-md shrink-0">
-              {currentRole === 'Admin' ? 'ADM' : 'PEM'}
+              {currentRole === 'Super Admin' ? 'ADM' : currentRole === 'Operator' ? 'OPR' : 'PEM'}
             </div>
           </div>
         </header>
@@ -505,13 +507,44 @@ export default function App() {
 
           {currentTab === 'pengajuan' && (
             <div className="space-y-4 animate-in fade-in duration-150">
-              <BookingForm 
-                vehicles={vehicles}
-                bookings={bookings}
-                onSubmitBooking={handleAddBooking}
-                onSuccess={() => setCurrentTab('riwayat')}
-                currentUser={currentUser}
-              />
+              {currentUser ? (
+                <BookingForm 
+                  vehicles={vehicles}
+                  bookings={bookings}
+                  onSubmitBooking={handleAddBooking}
+                  onSuccess={() => setCurrentTab('riwayat')}
+                  currentUser={currentUser}
+                />
+              ) : (
+                <div className="max-w-md mx-auto bg-white dark:bg-neutral-900 rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-xl p-8 text-center space-y-6">
+                  <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-neutral-100">Akses Terbatas</h2>
+                    <p className="text-xs text-gray-500 dark:text-neutral-400 leading-relaxed">
+                      Mohon maaf, fitur pengajuan peminjaman kendaraan hanya dapat diakses dan dilihat oleh akun pegawai yang sudah terdaftar. Silakan masuk atau daftarkan akun baru Anda terlebih dahulu.
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentTab('login')}
+                      className="flex-1 py-3 bg-scb-green hover:bg-emerald-750 active:scale-[98%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Masuk / Daftar Akun</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentTab('dashboard')}
+                      className="flex-1 py-3 bg-gray-100 hover:bg-gray-250 dark:bg-neutral-800 dark:hover:bg-neutral-750 text-gray-700 dark:text-neutral-300 text-xs font-bold rounded-xl border border-gray-250 dark:border-neutral-750 transition-all cursor-pointer"
+                    >
+                      Kembali ke Dashboard
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

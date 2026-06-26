@@ -204,12 +204,20 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       return;
     }
 
-    const newRole: AppRole = user.role === 'Admin' ? 'Pemohon' : 'Admin';
+    let newRole: AppRole = 'Pemohon';
+    if (user.role === 'Pemohon') {
+      newRole = 'Operator';
+    } else if (user.role === 'Operator') {
+      newRole = 'Super Admin';
+    } else {
+      newRole = 'Pemohon';
+    }
+    
     const updatedUser = { ...user, role: newRole };
     addOrUpdateUser(updatedUser).then(() => {
       pushNotification(
         'Hak Akses Diperbarui',
-        `Hak akses untuk ${user.nama} berhasil diubah menjadi ${newRole === 'Admin' ? 'SUPER ADMIN' : 'PEMOHON (PEGAWAI)'}.`,
+        `Hak akses untuk ${user.nama} berhasil diubah menjadi ${newRole.toUpperCase()}.`,
         'info'
       );
     }).catch(e => {
@@ -327,15 +335,17 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all shadow-sm ${
                               isSelf ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'
                             } ${
-                              user.role === 'Admin'
+                              user.role === 'Super Admin'
                                 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/40'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/40'
+                                : user.role === 'Operator'
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-200/40'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/40'
                             }`}
-                            title={isSelf ? "Tidak bisa mengubah diri sendiri" : "Klik untuk toggle hak akses secara langsung"}
+                            title={isSelf ? "Tidak bisa mengubah diri sendiri" : "Klik untuk toggle hak akses secara langsung (Pemohon -> Operator -> Super Admin)"}
                             id={`toggle-role-${user.email.split('@')[0]}`}
                           >
                             <Shield className="w-3 h-3" />
-                            <span>{user.role === 'Admin' ? 'Super Admin' : 'Pemohon'}</span>
+                            <span>{user.role}</span>
                           </button>
                         </td>
                         <td className="py-3.5 px-4 text-right">
@@ -483,13 +493,13 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
+                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Penentuan Hak Akses</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setFormRole('Pemohon')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         formRole === 'Pemohon'
                           ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-250 dark:border-blue-800 shadow-sm'
                           : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
@@ -497,21 +507,34 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                       id="btn-select-pemohon-role"
                     >
                       <span>Pemohon</span>
-                      {formRole === 'Pemohon' && <Check className="w-3.5 h-3.5" />}
+                      {formRole === 'Pemohon' && <Check className="w-3 h-3" />}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormRole('Admin')}
+                      onClick={() => setFormRole('Operator')}
+                      className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        formRole === 'Operator'
+                          ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-250 dark:border-purple-800 shadow-sm'
+                          : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
+                      }`}
+                      id="btn-select-operator-role"
+                    >
+                      <span>Operator</span>
+                      {formRole === 'Operator' && <Check className="w-3 h-3" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormRole('Super Admin')}
                       disabled={currentUser?.email.toLowerCase() === formEmail.toLowerCase()}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        formRole === 'Admin'
+                      className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        formRole === 'Super Admin'
                           ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-250 dark:border-amber-800 shadow-sm'
                           : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-200 dark:border-neutral-700 hover:bg-gray-50'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                       id="btn-select-admin-role"
                     >
-                      <span>Super Admin</span>
-                      {formRole === 'Admin' && <Check className="w-3.5 h-3.5" />}
+                      <span>Admin</span>
+                      {formRole === 'Super Admin' && <Check className="w-3 h-3" />}
                     </button>
                   </div>
                 </div>

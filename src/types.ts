@@ -39,7 +39,7 @@ export interface AppNotification {
   type: 'info' | 'success' | 'warning' | 'alert';
 }
 
-export type AppRole = 'Pemohon' | 'Admin';
+export type AppRole = 'Pemohon' | 'Operator' | 'Super Admin';
 
 export interface UserProfile {
   email: string;

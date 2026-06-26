@@ -341,7 +341,7 @@ export default function BookingHistory({
                           </button>
 
                           {/* Admin actions: Approve / Reject / Complete */}
-                          {currentRole === 'Admin' && (
+                          {(currentRole === 'Super Admin' || currentRole === 'Operator') && (
                             <>
                               {b.status === 'Draft' && (
                                 <button
@@ -458,7 +458,7 @@ export default function BookingHistory({
                         <Eye className="w-3.5 h-3.5" /> Detail
                       </button>
 
-                      {currentRole === 'Admin' && (
+                      {(currentRole === 'Super Admin' || currentRole === 'Operator') && (
                         <div className="flex items-center gap-1">
                           {b.status === 'Draft' && (
                             <button

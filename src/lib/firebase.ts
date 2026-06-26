@@ -10,7 +10,7 @@ import {
   deleteDoc,
   writeBatch
 } from 'firebase/firestore';
-import { Vehicle, Booking, AppNotification, UserProfile } from '../types';
+import { Vehicle, Booking, AppNotification, UserProfile, AppRole } from '../types';
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from '../mockData';
 
 // Web app Firebase configuration from firebase-applet-config.json
@@ -68,21 +68,28 @@ export async function seedInitialData() {
           email: 'operasional.scb@gmail.com',
           nama: 'Super Admin Sarpras',
           jabatan: 'Kepala Bagian Sarpras',
-          role: 'Admin',
+          role: 'Super Admin' as AppRole,
           password: 'admin123'
+        },
+        {
+          email: 'operator.scb@gmail.com',
+          nama: 'Ust. Operator Sarpras',
+          jabatan: 'Staf Operasional Sarpras',
+          role: 'Operator' as AppRole,
+          password: 'operator123'
         },
         {
           email: 'kesiswaan.cendekia@baznas.sch.id',
           nama: 'Ust. Ahmad Fauzi',
           jabatan: 'Wakasek Kesiswaan',
-          role: 'Pemohon',
+          role: 'Pemohon' as AppRole,
           password: 'pegawai123'
         },
         {
           email: 'humas.cendekia@baznas.sch.id',
           nama: 'Ustz. Rahma Wardani',
           jabatan: 'Koordinator Humas',
-          role: 'Pemohon',
+          role: 'Pemohon' as AppRole,
           password: 'pegawai123'
         }
       ];

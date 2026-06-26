@@ -59,9 +59,17 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       email: 'operasional.scb@gmail.com',
       nama: 'Super Admin Sarpras',
       jabatan: 'Kepala Bagian Sarpras',
-      role: 'Admin' as AppRole,
+      role: 'Super Admin' as AppRole,
       label: 'Super Admin',
       password: 'admin123'
+    },
+    {
+      email: 'operator.scb@gmail.com',
+      nama: 'Ust. Operator Sarpras',
+      jabatan: 'Staf Operasional Sarpras',
+      role: 'Operator' as AppRole,
+      label: 'Operator Sarpras',
+      password: 'operator123'
     },
     {
       email: 'kesiswaan.cendekia@baznas.sch.id',
@@ -136,15 +144,33 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
         email: 'operasional.scb@gmail.com',
         nama: 'Super Admin Sarpras',
         jabatan: 'Kepala Bagian Sarpras',
-        role: 'Admin',
+        role: 'Super Admin',
         password: 'admin123'
       };
       const updatedUsers = [...users, matchedUser];
       saveRegisteredUsers(updatedUsers);
     }
 
+    // If the email is the operator and not registered yet, register it dynamically
+    if (!matchedUser && emailClean === 'operator.scb@gmail.com') {
+      matchedUser = {
+        email: 'operator.scb@gmail.com',
+        nama: 'Ust. Operator Sarpras',
+        jabatan: 'Staf Operasional Sarpras',
+        role: 'Operator',
+        password: 'operator123'
+      };
+      const updatedUsers = [...users, matchedUser];
+      saveRegisteredUsers(updatedUsers);
+    }
+
     if (matchedUser) {
-      const correctPassword = matchedUser.password || (matchedUser.role === 'Admin' ? 'admin123' : 'pegawai123');
+      const correctPassword = matchedUser.password || 
+        (matchedUser.role === 'Super Admin' 
+          ? 'admin123' 
+          : matchedUser.role === 'Operator' 
+            ? 'operator123' 
+            : 'pegawai123');
       if (correctPassword === loginPassword) {
         setSuccessMsg(`Selamat datang kembali, ${matchedUser.nama}!`);
         setTimeout(() => {
@@ -195,8 +221,13 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       return;
     }
 
-    // Determine role: operasional.scb@gmail.com is forced to Admin, others default to Pemohon
-    const determinedRole: AppRole = emailClean === 'operasional.scb@gmail.com' ? 'Admin' : 'Pemohon';
+    // Determine role: operasional.scb@gmail.com is forced to Super Admin, operator.scb to Operator, others default to Pemohon
+    let determinedRole: AppRole = 'Pemohon';
+    if (emailClean === 'operasional.scb@gmail.com') {
+      determinedRole = 'Super Admin';
+    } else if (emailClean === 'operator.scb@gmail.com') {
+      determinedRole = 'Operator';
+    }
 
     const newUser: UserProfile = {
       email: emailClean,
@@ -209,7 +240,7 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
     const updatedUsers = [...users, newUser];
     saveRegisteredUsers(updatedUsers);
 
-    setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role === 'Admin' ? 'Super Admin' : 'Pemohon'}.`);
+    setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);
     
     setTimeout(() => {
       onLoginSuccess(newUser);
@@ -281,7 +312,12 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       saveRegisteredUsers(users);
     } else {
       const registeredUser = users[userIndex];
-      const actualCurrentPassword = registeredUser.password || (registeredUser.role === 'Admin' ? 'admin123' : 'pegawai123');
+      const actualCurrentPassword = registeredUser.password || 
+        (registeredUser.role === 'Super Admin' 
+          ? 'admin123' 
+          : registeredUser.role === 'Operator' 
+            ? 'operator123' 
+            : 'pegawai123');
 
       if (actualCurrentPassword !== oldPassword) {
         setErrorMsg('Password lama yang Anda masukkan salah.');
@@ -337,9 +373,17 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
             <div className="p-3 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-150 dark:border-neutral-850">
               <span className="text-[10px] text-gray-400 dark:text-neutral-500 font-bold uppercase block mb-0.5">Hak Akses</span>
               <span className={`inline-block px-2 py-0.5 mt-0.5 rounded text-[10px] font-bold uppercase ${
-                currentUser.role === 'Admin' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400'
+                currentUser.role === 'Super Admin' 
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400' 
+                  : currentUser.role === 'Operator'
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-400'
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400'
               }`}>
-                {currentUser.role === 'Admin' ? 'Super Admin' : 'Pemohon (Pegawai)'}
+                {currentUser.role === 'Super Admin' 
+                  ? 'Super Admin' 
+                  : currentUser.role === 'Operator'
+                    ? 'Operator Sarpras'
+                    : 'Pemohon (Pegawai)'}
               </span>
             </div>
           </div>
