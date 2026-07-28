@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vehicle, Booking, AppNotification, AppRole, BookingStatus, UserProfile } from './types';
+import { Vehicle, Booking, AppNotification, AppRole, BookingStatus, UserProfile, EmailNotificationLog, EmailSettings } from './types';
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from './mockData';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -10,19 +10,30 @@ import ReportsView from './components/ReportsView';
 import CalendarView from './components/CalendarView';
 import AuthScreen from './components/AuthScreen';
 import AccountManager from './components/AccountManager';
+import EmailNotificationManager from './components/EmailNotificationManager';
 
 import { 
   seedInitialData,
   subscribeVehicles,
   subscribeBookings,
   subscribeNotifications,
+  subscribeEmailLogs,
+  subscribeEmailSettings,
   addOrUpdateVehicle,
   deleteVehicleDoc,
   addOrUpdateBooking,
   deleteBookingDoc,
   addOrUpdateNotification,
-  deleteNotificationDoc
+  deleteNotificationDoc,
+  deleteEmailLogDoc,
+  saveEmailSettingsDoc
 } from './lib/firebase';
+
+import { 
+  sendOperatorEmailNotification, 
+  buildNewBookingEmailBody, 
+  buildStatusChangeEmailBody 
+} from './lib/emailNotifier';
 
 import { 
   Bell, 
@@ -45,6 +56,14 @@ export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [emailLogs, setEmailLogs] = useState<EmailNotificationLog[]>([]);
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({
+    operatorEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
+    notifyNewBooking: true,
+    notifyStatusChange: true,
+    notifyUserRegistration: true,
+    enableDirectMailto: true
+  });
 
   // Seed database and set up subscriptions
   useEffect(() => {
@@ -52,6 +71,8 @@ export default function App() {
     let unsubVehicles: (() => void) | null = null;
     let unsubBookings: (() => void) | null = null;
     let unsubNotifs: (() => void) | null = null;
+    let unsubEmailLogs: (() => void) | null = null;
+    let unsubEmailSettings: (() => void) | null = null;
 
     seedInitialData().then(() => {
       if (!active) return;
@@ -64,6 +85,12 @@ export default function App() {
       unsubNotifs = subscribeNotifications((data) => {
         setNotifications(data);
       });
+      unsubEmailLogs = subscribeEmailLogs((data) => {
+        setEmailLogs(data);
+      });
+      unsubEmailSettings = subscribeEmailSettings((data) => {
+        setEmailSettings(data);
+      });
     }).catch((err) => {
       console.error('Error seeding/subscribing to Firestore:', err);
     });
@@ -73,6 +100,8 @@ export default function App() {
       if (unsubVehicles) unsubVehicles();
       if (unsubBookings) unsubBookings();
       if (unsubNotifs) unsubNotifs();
+      if (unsubEmailLogs) unsubEmailLogs();
+      if (unsubEmailSettings) unsubEmailSettings();
     };
   }, []);
 
@@ -225,9 +254,23 @@ export default function App() {
       } else {
         pushNotification(
           'Pengajuan Baru Terdaftar',
-          `Pengajuan oleh ${newBooking.penanggung_jawab} untuk kegiatan "${newBooking.kegiatan}" terdaftar & menunggu peninjauan Sarpras.`,
+          `Pengajuan oleh ${newBooking.penanggung_jawab} untuk kegiatan "${newBooking.kegiatan}" terdaftar & notifikasi email dikirim ke Operator Sarpras.`,
           'warning'
         );
+
+        // Dispatch automated email notification to Operator email addresses
+        if (emailSettings.notifyNewBooking) {
+          const { subject, body } = buildNewBookingEmailBody(fullBooking, targetVehicle?.nama_kendaraan);
+          sendOperatorEmailNotification({
+            recipientEmail: emailSettings.operatorEmail || 'operasional.scb@gmail.com, operator.scb@gmail.com',
+            recipientName: 'Tim Operator Sarpras',
+            recipientRole: 'Operator',
+            subject,
+            body,
+            triggerEvent: 'Pengajuan Baru',
+            bookingId: generatedId
+          }).catch(console.error);
+        }
       }
       return { success: true, message: 'Booking successfully added!' };
     } catch (error: any) {
@@ -259,6 +302,20 @@ export default function App() {
 
       pushNotification(titleText, messageText, notifType);
       addOrUpdateBooking({ ...b, status: newStatus }).catch(console.error);
+
+      // Dispatch automated email notification for status change
+      if (emailSettings.notifyStatusChange) {
+        const { subject, body } = buildStatusChangeEmailBody(b, newStatus, v?.nama_kendaraan);
+        sendOperatorEmailNotification({
+          recipientEmail: `${emailSettings.operatorEmail}, ${b.penanggung_jawab}`,
+          recipientName: b.penanggung_jawab || 'Pemohon',
+          recipientRole: 'Pemohon',
+          subject,
+          body,
+          triggerEvent: 'Perubahan Status Peminjaman',
+          bookingId: b.id
+        }).catch(console.error);
+      }
     }
   };
 
@@ -435,6 +492,7 @@ export default function App() {
         setCurrentRole={setCurrentRole}
         pendingApprovalsCount={pendingApprovalsCount}
         unreadNotificationsCount={unreadNotificationsCount}
+        emailLogsCount={emailLogs.length}
         currentUser={currentUser}
         onLogout={handleLogout}
         isDarkMode={isDarkMode}
@@ -588,6 +646,19 @@ export default function App() {
                 currentUser={currentUser}
                 onUpdateCurrentUser={setCurrentUser}
                 pushNotification={pushNotification}
+              />
+            </div>
+          )}
+
+          {currentTab === 'notifikasi-email' && (currentRole === 'Super Admin' || currentRole === 'Operator') && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <EmailNotificationManager 
+                emailLogs={emailLogs}
+                emailSettings={emailSettings}
+                onSaveSettings={saveEmailSettingsDoc}
+                onDeleteLog={deleteEmailLogDoc}
+                currentUser={currentUser}
+                currentRole={currentRole}
               />
             </div>
           )}

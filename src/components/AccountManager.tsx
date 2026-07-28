@@ -17,7 +17,12 @@ import {
   Key, 
   Search,
   CheckCircle2,
-  Info
+  Info,
+  CheckSquare,
+  Square,
+  CheckCircle,
+  SlidersHorizontal,
+  Settings
 } from 'lucide-react';
 
 interface AccountManagerProps {
@@ -26,10 +31,24 @@ interface AccountManagerProps {
   pushNotification: (title: string, message: string, type: 'success' | 'info' | 'warning' | 'alert') => void;
 }
 
+const AVAILABLE_PERMISSIONS = [
+  { id: 'dashboard', label: 'Dashboard & Ringkasan Utama', defaultRoles: ['Pemohon', 'Operator', 'Super Admin'] },
+  { id: 'pengajuan', label: 'Formulir Pengajuan Peminjaman', defaultRoles: ['Pemohon', 'Operator', 'Super Admin'] },
+  { id: 'riwayat', label: 'Riwayat & Progres Status Peminjaman', defaultRoles: ['Pemohon', 'Operator', 'Super Admin'] },
+  { id: 'kalender', label: 'Kalender & Jadwal Penggunaan Armada', defaultRoles: ['Pemohon', 'Operator', 'Super Admin'] },
+  { id: 'kendaraan', label: 'Master Data & Status Unit Kendaraan', defaultRoles: ['Operator', 'Super Admin'] },
+  { id: 'pengguna', label: 'Pengelolaan Akun & Hak Akses (Super Admin)', defaultRoles: ['Super Admin'] },
+  { id: 'notifikasi-email', label: 'Notifikasi Email Operator Sarpras', defaultRoles: ['Operator', 'Super Admin'] },
+  { id: 'laporan', label: 'Laporan & Statistik Eksport', defaultRoles: ['Pemohon', 'Operator', 'Super Admin'] },
+];
+
 export default function AccountManager({ currentUser, onUpdateCurrentUser, pushNotification }: AccountManagerProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Selection states for batch checklist
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+
   // Create / Edit states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEmail, setEditingEmail] = useState<string | null>(null); // null = creating new
@@ -39,6 +58,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
   const [formPassword, setFormPassword] = useState('');
   const [formRole, setFormRole] = useState<AppRole>('Pemohon');
   const [formStatus, setFormStatus] = useState<'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak'>('Disetujui');
+  const [formPermissions, setFormPermissions] = useState<string[]>([]);
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -51,6 +71,12 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     return () => unsubscribe();
   }, []);
 
+  const getDefaultPermissionsForRole = (role: AppRole): string[] => {
+    return AVAILABLE_PERMISSIONS
+      .filter(p => p.defaultRoles.includes(role))
+      .map(p => p.id);
+  };
+
   const openAddForm = () => {
     setEditingEmail(null);
     setFormName('');
@@ -59,6 +85,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     setFormPassword('');
     setFormRole('Pemohon');
     setFormStatus('Disetujui');
+    setFormPermissions(getDefaultPermissionsForRole('Pemohon'));
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
@@ -72,9 +99,24 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     setFormPassword(user.password || 'pegawai123');
     setFormRole(user.role);
     setFormStatus(user.status || 'Disetujui');
+    setFormPermissions(user.permissions && user.permissions.length > 0 
+      ? user.permissions 
+      : getDefaultPermissionsForRole(user.role)
+    );
     setErrorMsg('');
     setSuccessMsg('');
     setIsFormOpen(true);
+  };
+
+  const handleRoleChangeInForm = (newRole: AppRole) => {
+    setFormRole(newRole);
+    setFormPermissions(getDefaultPermissionsForRole(newRole));
+  };
+
+  const togglePermissionInForm = (permId: string) => {
+    setFormPermissions(prev => 
+      prev.includes(permId) ? prev.filter(p => p !== permId) : [...prev, permId]
+    );
   };
 
   const handleApproveUser = (user: UserProfile, status: 'Disetujui' | 'Ditolak') => {
@@ -92,6 +134,90 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       console.error(e);
       alert('Gagal memperbarui status pendaftaran.');
     });
+  };
+
+  // Batch checklist handlers
+  const handleSelectAll = () => {
+    if (selectedEmails.length === filteredUsers.length) {
+      setSelectedEmails([]);
+    } else {
+      setSelectedEmails(filteredUsers.map(u => u.email));
+    }
+  };
+
+  const handleToggleSelectUser = (email: string) => {
+    setSelectedEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const handleBatchApproveStatus = (status: 'Disetujui' | 'Ditolak') => {
+    if (selectedEmails.length === 0) return;
+    const targets = users.filter(u => selectedEmails.includes(u.email));
+    
+    Promise.all(targets.map(u => addOrUpdateUser({ ...u, status }))).then(() => {
+      pushNotification(
+        'Pembaruan Akun Massal',
+        `Status ${selectedEmails.length} akun berhasil diubah menjadi ${status.toUpperCase()}.`,
+        status === 'Disetujui' ? 'success' : 'alert'
+      );
+      setSelectedEmails([]);
+    }).catch(e => {
+      console.error(e);
+      alert('Gagal memperbarui beberapa akun.');
+    });
+  };
+
+  const handleBatchRoleChange = (newRole: AppRole) => {
+    if (selectedEmails.length === 0) return;
+    const targets = users.filter(u => selectedEmails.includes(u.email));
+    
+    // Prevent demoting self
+    const containsSelf = targets.some(u => currentUser && u.email.toLowerCase() === currentUser.email.toLowerCase());
+    if (containsSelf && newRole !== 'Super Admin') {
+      alert('Anda tidak bisa menurunkan hak akses akun Anda sendiri secara massal!');
+      return;
+    }
+
+    Promise.all(targets.map(u => addOrUpdateUser({ 
+      ...u, 
+      role: newRole,
+      permissions: getDefaultPermissionsForRole(newRole)
+    }))).then(() => {
+      pushNotification(
+        'Hak Akses Massal Diperbarui',
+        `Role ${selectedEmails.length} akun diubah menjadi ${newRole.toUpperCase()}.`,
+        'info'
+      );
+      setSelectedEmails([]);
+    }).catch(e => {
+      console.error(e);
+      alert('Gagal memperbarui role akun.');
+    });
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedEmails.length === 0) return;
+    
+    const containsSelf = selectedEmails.some(e => currentUser && e.toLowerCase() === currentUser.email.toLowerCase());
+    if (containsSelf) {
+      alert('Anda tidak dapat menghapus akun Anda sendiri dari pilihan massal!');
+      return;
+    }
+
+    if (confirm(`Apakah Anda yakin ingin menghapus ${selectedEmails.length} akun terdaftar secara permanen?`)) {
+      Promise.all(selectedEmails.map(e => deleteUserDoc(e))).then(() => {
+        pushNotification(
+          'Pembersihan Akun Massal',
+          `${selectedEmails.length} akun berhasil dihapus dari sistem.`,
+          'alert'
+        );
+        setSelectedEmails([]);
+      }).catch(e => {
+        console.error(e);
+        alert('Gagal menghapus beberapa akun.');
+      });
+    }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -133,7 +259,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         jabatan: jabatanClean,
         role: formRole,
         password: passwordClean,
-        status: formStatus
+        status: formStatus,
+        permissions: formPermissions
       };
 
       addOrUpdateUser(newUser).then(() => {
@@ -172,7 +299,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         jabatan: jabatanClean,
         role: formRole,
         password: passwordClean,
-        status: formStatus
+        status: formStatus,
+        permissions: formPermissions
       };
 
       addOrUpdateUser(updatedUser).then(() => {
@@ -235,7 +363,12 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       newRole = 'Pemohon';
     }
     
-    const updatedUser = { ...user, role: newRole };
+    const updatedUser: UserProfile = { 
+      ...user, 
+      role: newRole,
+      permissions: getDefaultPermissionsForRole(newRole) 
+    };
+
     addOrUpdateUser(updatedUser).then(() => {
       pushNotification(
         'Hak Akses Diperbarui',
@@ -266,10 +399,10 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         <div>
           <h2 className="text-xl font-black text-gray-900 dark:text-neutral-100 tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-scb-green" />
-            Pengelolaan Akun & Hak Akses
+            Pengelolaan Akun &amp; Matriks Hak Akses
           </h2>
           <p className="text-xs text-gray-500 dark:text-neutral-400 font-medium mt-1">
-            Manajemen otentikasi kredensial, perizinan, dan penentuan hak akses pengguna sistem SCB-GO.
+            Manajemen otentikasi kredensial, ceklist perizinan modul per-peran, dan aksi masal akun pegawai SCB-GO.
           </p>
         </div>
 
@@ -346,12 +479,12 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       {/* Main layout container with lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
-        {/* Left Side: Users Search & Table */}
+        {/* Left Side: Users Search & Table with Batch Checklist */}
         <div className="lg:col-span-2 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden transition-colors">
           
           {/* Filter Bar */}
-          <div className="p-4 border-b border-gray-100 dark:border-neutral-800 bg-gray-50/50 dark:bg-neutral-900/50 flex items-center gap-3">
-            <div className="relative flex-1">
+          <div className="p-4 border-b border-gray-100 dark:border-neutral-800 bg-gray-50/50 dark:bg-neutral-900/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
                 <Search className="w-4 h-4" />
               </span>
@@ -364,35 +497,114 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                 id="search-accounts"
               />
             </div>
-            <div className="text-[11px] font-bold text-gray-450 dark:text-neutral-400 shrink-0 bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700">
+            <div className="text-[11px] font-bold text-gray-500 dark:text-neutral-400 shrink-0 bg-white dark:bg-neutral-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-neutral-700">
               Total: {filteredUsers.length} Akun
             </div>
           </div>
 
-          {/* Accounts List Container */}
+          {/* Batch Checklist Action Bar */}
+          {selectedEmails.length > 0 && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-900/50 px-4 py-3 flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>{selectedEmails.length} akun tercentang</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleBatchApproveStatus('Disetujui')}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  Setujui
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchApproveStatus('Ditolak')}
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  Tolak
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchRoleChange('Operator')}
+                  className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  Jadikan Operator
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchRoleChange('Pemohon')}
+                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  Jadikan Pemohon
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBatchDelete}
+                  className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-all shadow-sm cursor-pointer"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Accounts List Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 dark:bg-neutral-800 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 dark:border-neutral-850">
+                  <th className="py-3 px-3 text-center w-10">
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="text-gray-400 hover:text-scb-green transition-colors cursor-pointer"
+                      title="Pilih / Uncheck Semua Akun"
+                    >
+                      {selectedEmails.length > 0 && selectedEmails.length === filteredUsers.length ? (
+                        <CheckSquare className="w-4 h-4 text-scb-green mx-auto" />
+                      ) : (
+                        <Square className="w-4 h-4 mx-auto" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-4">Nama Lengkap &amp; Email</th>
                   <th className="py-3 px-4">Jabatan</th>
                   <th className="py-3 px-4 text-center">Status Akun</th>
-                  <th className="py-3 px-4 text-center">Hak Akses</th>
+                  <th className="py-3 px-4 text-center">Hak Akses Modul</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-850 text-xs">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-400 dark:text-neutral-500 font-medium">
+                    <td colSpan={6} className="py-12 text-center text-gray-400 dark:text-neutral-500 font-medium">
                       Tidak ada akun pegawai yang cocok dengan kata pencarian.
                     </td>
                   </tr>
                 ) : (
                   filteredUsers.map((user) => {
                     const isSelf = currentUser?.email.toLowerCase() === user.email.toLowerCase();
+                    const isChecked = selectedEmails.includes(user.email);
+                    const userPerms = user.permissions || getDefaultPermissionsForRole(user.role);
+
                     return (
-                      <tr key={user.email} className="hover:bg-gray-55/60 dark:hover:bg-neutral-850/30 transition-colors">
+                      <tr 
+                        key={user.email} 
+                        className={`hover:bg-gray-50/80 dark:hover:bg-neutral-850/50 transition-colors ${
+                          isChecked ? 'bg-emerald-50/30 dark:bg-emerald-950/20' : ''
+                        }`}
+                      >
+                        <td className="py-3.5 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleSelectUser(user.email)}
+                            className="w-4 h-4 rounded border-gray-300 text-scb-green focus:ring-scb-green cursor-pointer"
+                            id={`chk-user-${user.email.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                          />
+                        </td>
                         <td className="py-3.5 px-4 space-y-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-gray-800 dark:text-neutral-200">
@@ -447,25 +659,30 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                           )}
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleRoleDirect(user)}
-                            disabled={isSelf}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all shadow-sm ${
-                              isSelf ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'
-                            } ${
-                              user.role === 'Super Admin'
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/40'
-                                : user.role === 'Operator'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-200/40'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/40'
-                            }`}
-                            title={isSelf ? "Tidak bisa mengubah diri sendiri" : "Klik untuk toggle hak akses secara langsung (Pemohon -> Operator -> Super Admin)"}
-                            id={`toggle-role-${user.email.split('@')[0]}`}
-                          >
-                            <Shield className="w-3 h-3" />
-                            <span>{user.role}</span>
-                          </button>
+                          <div className="flex flex-col items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRoleDirect(user)}
+                              disabled={isSelf}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition-all shadow-sm ${
+                                isSelf ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'
+                              } ${
+                                user.role === 'Super Admin'
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/40'
+                                  : user.role === 'Operator'
+                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-400 border border-purple-200/40'
+                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/40'
+                              }`}
+                              title={isSelf ? "Tidak bisa mengubah diri sendiri" : "Klik untuk toggle role"}
+                              id={`toggle-role-${user.email.replace(/[^a-zA-Z0-9]/g, '-')}`}
+                            >
+                              <Shield className="w-3 h-3" />
+                              <span>{user.role}</span>
+                            </button>
+                            <span className="text-[9px] text-gray-400 dark:text-neutral-500 font-medium">
+                              {userPerms.length} modul tercentang
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
@@ -473,8 +690,8 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                               type="button"
                               onClick={() => openEditForm(user)}
                               className="p-1.5 text-gray-500 hover:text-scb-green hover:bg-scb-light-green dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer"
-                              title="Edit Profil"
-                              id={`btn-edit-user-${user.email.split('@')[0]}`}
+                              title="Edit Profil & Matriks Ceklist Modul"
+                              id={`btn-edit-user-${user.email.replace(/[^a-zA-Z0-9]/g, '-')}`}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -488,7 +705,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                                   : 'text-red-400 hover:text-red-650 hover:bg-red-50 dark:hover:bg-neutral-850 cursor-pointer'
                               }`}
                               title={isSelf ? "Tidak bisa menghapus akun sendiri" : "Hapus Akun"}
-                              id={`btn-delete-user-${user.email.split('@')[0]}`}
+                              id={`btn-delete-user-${user.email.replace(/[^a-zA-Z0-9]/g, '-')}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -505,19 +722,20 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
           <div className="p-4 border-t border-gray-100 dark:border-neutral-850 bg-gray-50/30 dark:bg-neutral-900/30 text-[11px] text-gray-550 dark:text-neutral-450 flex items-start gap-2">
             <Info className="w-4 h-4 text-scb-green shrink-0 mt-0.5" />
             <span>
-              <strong>Keterangan Hak Akses:</strong> Akun berstatus <strong>Super Admin</strong> dapat melakukan verifikasi, memberi status disetujui/ditolak, serta mengatur parameter armada. Akun <strong>Pemohon</strong> dapat mengisi formulir pengajuan dan melacak progres. Klik lencana hak akses di atas untuk mengubah perizinan dengan cepat.
+              <strong>Matriks Hak Akses &amp; Ceklist:</strong> Centang satu atau beberapa akun di atas untuk menjalankan aksi massal (Setujui, Tolak, Ubah Peran, Hapus). Pilih ikon pensil (<Edit2 className="w-3 h-3 inline" />) untuk menyesuaikan ceklist perizinan modul individual per pegawai.
             </span>
           </div>
 
         </div>
 
-        {/* Right Side: Quick Account Form Pane */}
+        {/* Right Side: Quick Account Form & Permissions Checklist Pane */}
         <div className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden p-6 text-left transition-colors">
           {isFormOpen ? (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-200">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-neutral-800 pb-3">
-                <h3 className="font-bold text-sm text-gray-900 dark:text-neutral-100">
-                  {editingEmail === null ? 'Tambah Akun Pegawai' : 'Sunting Detail Akun'}
+                <h3 className="font-bold text-sm text-gray-900 dark:text-neutral-100 flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-scb-green" />
+                  {editingEmail === null ? 'Tambah Akun Pegawai' : 'Sunting Detail & Akses Akun'}
                 </h3>
                 <button
                   type="button"
@@ -612,12 +830,12 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                   </div>
                 </div>
 
-                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Penentuan Hak Akses</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 dark:text-neutral-300 block">Peran Utama (Role)</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
-                      onClick={() => setFormRole('Pemohon')}
+                      onClick={() => handleRoleChangeInForm('Pemohon')}
                       className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         formRole === 'Pemohon'
                           ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-250 dark:border-blue-800 shadow-sm'
@@ -630,7 +848,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormRole('Operator')}
+                      onClick={() => handleRoleChangeInForm('Operator')}
                       className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         formRole === 'Operator'
                           ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 border-purple-250 dark:border-purple-800 shadow-sm'
@@ -643,7 +861,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormRole('Super Admin')}
+                      onClick={() => handleRoleChangeInForm('Super Admin')}
                       disabled={currentUser?.email.toLowerCase() === formEmail.toLowerCase()}
                       className={`py-2 px-1.5 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         formRole === 'Super Admin'
@@ -655,6 +873,51 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                       <span>Admin</span>
                       {formRole === 'Super Admin' && <Check className="w-3 h-3" />}
                     </button>
+                  </div>
+                </div>
+
+                {/* Granular Module Access Checklist Panel */}
+                <div className="space-y-2 pt-1 border-t border-gray-100 dark:border-neutral-800">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 dark:text-neutral-200 flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-scb-green" />
+                      Ceklist Perizinan Akses Modul
+                    </label>
+                    <span className="text-[10px] text-gray-400 font-mono">
+                      {formPermissions.length} / {AVAILABLE_PERMISSIONS.length} Terpilih
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto p-2 bg-gray-50 dark:bg-neutral-850 rounded-xl border border-gray-200 dark:border-neutral-750">
+                    {AVAILABLE_PERMISSIONS.map((perm) => {
+                      const isChecked = formPermissions.includes(perm.id);
+                      return (
+                        <label 
+                          key={perm.id} 
+                          className={`flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer transition-colors ${
+                            isChecked 
+                              ? 'bg-white dark:bg-neutral-800 text-gray-800 dark:text-neutral-200 border border-emerald-200/50 dark:border-emerald-900/40 font-semibold shadow-2xs' 
+                              : 'text-gray-500 dark:text-neutral-400 hover:bg-white/60 dark:hover:bg-neutral-800/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => togglePermissionInForm(perm.id)}
+                              className="w-3.5 h-3.5 rounded border-gray-300 text-scb-green focus:ring-scb-green cursor-pointer"
+                              id={`chk-perm-${perm.id}`}
+                            />
+                            <span>{perm.label}</span>
+                          </div>
+                          {isChecked && (
+                            <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold rounded">
+                              Aktif
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -728,9 +991,9 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
                 <ShieldAlert className="w-8 h-8" />
               </div>
               <div className="max-w-xs mx-auto space-y-1.5">
-                <h3 className="font-bold text-sm text-gray-800 dark:text-neutral-200">Panel Interaksi Akun</h3>
+                <h3 className="font-bold text-sm text-gray-800 dark:text-neutral-200">Panel Interaksi &amp; Ceklist Akun</h3>
                 <p className="text-xs text-gray-500 dark:text-neutral-400 leading-normal">
-                  Pilih salah satu tombol edit (<Edit2 className="w-3 h-3 inline" />) di samping nama pegawai untuk menyunting, atau tekan tombol tambah di atas untuk mendaftarkan akun baru.
+                  Gunakan centang di tabel sebelah kiri untuk memilih banyak akun sekaligus, atau klik tombol edit (<Edit2 className="w-3 h-3 inline" />) untuk membuka matriks ceklist perizinan modul per-akun.
                 </p>
               </div>
               <button
@@ -749,3 +1012,4 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     </div>
   );
 }
+

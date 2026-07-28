@@ -48,4 +48,26 @@ export interface UserProfile {
   role: AppRole;
   password?: string;
   status?: 'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak';
+  permissions?: string[];
+}
+
+export interface EmailNotificationLog {
+  id: string;
+  recipientEmail: string;
+  recipientName: string;
+  recipientRole: string;
+  subject: string;
+  body: string;
+  sentAt: string;
+  triggerEvent: 'Pengajuan Baru' | 'Perubahan Status Peminjaman' | 'Pendaftaran Akun Baru' | 'Tes Notifikasi';
+  status: 'Terkirim' | 'Gagal' | 'Pending';
+  bookingId?: string;
+}
+
+export interface EmailSettings {
+  operatorEmail: string;
+  notifyNewBooking: boolean;
+  notifyStatusChange: boolean;
+  notifyUserRegistration: boolean;
+  enableDirectMailto: boolean;
 }

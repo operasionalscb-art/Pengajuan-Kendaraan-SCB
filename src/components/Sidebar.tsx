@@ -13,7 +13,8 @@ import {
   X,
   Bell,
   Sun,
-  Moon
+  Moon,
+  Mail
 } from 'lucide-react';
 import { AppRole, UserProfile } from '../types';
 
@@ -24,6 +25,7 @@ interface SidebarProps {
   setCurrentRole: (role: AppRole) => void;
   pendingApprovalsCount: number;
   unreadNotificationsCount: number;
+  emailLogsCount?: number;
   currentUser: UserProfile | null;
   onLogout: () => void;
   isDarkMode: boolean;
@@ -37,6 +39,7 @@ export default function Sidebar({
   setCurrentRole,
   pendingApprovalsCount,
   unreadNotificationsCount,
+  emailLogsCount = 0,
   currentUser,
   onLogout,
   isDarkMode,
@@ -50,6 +53,7 @@ export default function Sidebar({
     { id: 'riwayat', label: 'Riwayat Peminjaman', icon: History, registeredOnly: true },
     { id: 'kendaraan', label: 'Master Kendaraan', icon: Car, adminOnly: true },
     { id: 'pengguna', label: 'Akses & Akun', icon: Users, superAdminOnly: true },
+    { id: 'notifikasi-email', label: 'Notifikasi Email', icon: Mail, adminOnly: true },
     { id: 'laporan', label: 'Laporan & Statistik', icon: BarChart2 },
   ];
 
@@ -152,17 +156,24 @@ export default function Sidebar({
         {/* Navigation Items */}
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
           {menuItems.map((item) => {
-            // Check if item is registeredOnly and there is no active user session
-            if ((item as any).registeredOnly && !currentUser) {
-              return null;
-            }
-            // Check if item is superAdminOnly
-            if (item.superAdminOnly && currentRole !== 'Super Admin') {
-              return null;
-            }
-            // Check if item is adminOnly and currently not admin (Super Admin or Operator)
-            if (item.adminOnly && currentRole !== 'Super Admin' && currentRole !== 'Operator') {
-              return null;
+            // Check if user has custom permission array set
+            if (currentUser && currentUser.permissions && currentUser.permissions.length > 0) {
+              if (!currentUser.permissions.includes(item.id)) {
+                return null;
+              }
+            } else {
+              // Check if item is registeredOnly and there is no active user session
+              if ((item as any).registeredOnly && !currentUser) {
+                return null;
+              }
+              // Check if item is superAdminOnly
+              if (item.superAdminOnly && currentRole !== 'Super Admin') {
+                return null;
+              }
+              // Check if item is adminOnly and currently not admin (Super Admin or Operator)
+              if (item.adminOnly && currentRole !== 'Super Admin' && currentRole !== 'Operator') {
+                return null;
+              }
             }
 
             const IconComponent = item.icon;

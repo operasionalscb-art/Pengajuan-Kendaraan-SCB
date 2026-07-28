@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, AppRole } from '../types';
 import { subscribeUsers, addOrUpdateUser } from '../lib/firebase';
+import { sendOperatorEmailNotification, buildNewUserRegistrationEmailBody } from '../lib/emailNotifier';
 import { 
   ShieldCheck, 
   UserPlus, 
@@ -258,6 +259,17 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
     const updatedUsers = [...users, newUser];
     saveRegisteredUsers(updatedUsers);
+
+    // Dispatch automated email notification to Operator target email
+    const { subject, body } = buildNewUserRegistrationEmailBody(newUser);
+    sendOperatorEmailNotification({
+      recipientEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
+      recipientName: 'Operator & Super Admin',
+      recipientRole: 'Operator',
+      subject,
+      body,
+      triggerEvent: 'Pendaftaran Akun Baru'
+    }).catch(console.error);
 
     if (isApprovedAuto) {
       setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);

@@ -10,7 +10,7 @@ import {
   deleteDoc,
   writeBatch
 } from 'firebase/firestore';
-import { Vehicle, Booking, AppNotification, UserProfile, AppRole } from '../types';
+import { Vehicle, Booking, AppNotification, UserProfile, AppRole, EmailNotificationLog, EmailSettings } from '../types';
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from '../mockData';
 
 // Web app Firebase configuration from firebase-applet-config.json
@@ -195,6 +195,41 @@ export function subscribeUsers(onUpdate: (users: UserProfile[]) => void) {
   });
 }
 
+export function subscribeEmailLogs(onUpdate: (logs: EmailNotificationLog[]) => void) {
+  return onSnapshot(collection(db, 'email_logs'), (snapshot) => {
+    const list: EmailNotificationLog[] = [];
+    snapshot.forEach((doc) => {
+      list.push(doc.data() as EmailNotificationLog);
+    });
+    // Newer first
+    list.sort((a, b) => b.id.localeCompare(a.id));
+    onUpdate(list);
+  }, (error) => {
+    console.error('Error subscribing to email logs:', error);
+  });
+}
+
+export function subscribeEmailSettings(onUpdate: (settings: EmailSettings) => void) {
+  return onSnapshot(doc(db, 'settings', 'email_config'), (snapshot) => {
+    if (snapshot.exists()) {
+      onUpdate(snapshot.data() as EmailSettings);
+    } else {
+      // Default settings
+      const defaultSettings: EmailSettings = {
+        operatorEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
+        notifyNewBooking: true,
+        notifyStatusChange: true,
+        notifyUserRegistration: true,
+        enableDirectMailto: true
+      };
+      setDoc(doc(db, 'settings', 'email_config'), defaultSettings).catch(console.error);
+      onUpdate(defaultSettings);
+    }
+  }, (error) => {
+    console.error('Error subscribing to email settings:', error);
+  });
+}
+
 // ------------------- Firestore Mutations -------------------
 
 export async function addOrUpdateVehicle(vehicle: Vehicle) {
@@ -235,4 +270,19 @@ export async function addOrUpdateUser(user: UserProfile) {
 export async function deleteUserDoc(email: string) {
   const docRef = doc(db, 'users', email.toLowerCase());
   await deleteDoc(docRef);
+}
+
+export async function addEmailLog(log: EmailNotificationLog) {
+  const docRef = doc(db, 'email_logs', log.id);
+  await setDoc(docRef, log);
+}
+
+export async function deleteEmailLogDoc(logId: string) {
+  const docRef = doc(db, 'email_logs', logId);
+  await deleteDoc(docRef);
+}
+
+export async function saveEmailSettingsDoc(settings: EmailSettings) {
+  const docRef = doc(db, 'settings', 'email_config');
+  await setDoc(docRef, settings);
 }
