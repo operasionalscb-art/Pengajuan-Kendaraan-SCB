@@ -18,7 +18,7 @@ import {
   Download,
   AlertTriangle
 } from 'lucide-react';
-import { checkBookingConflict } from '../utils/bookingUtils';
+import { checkBookingConflict, getHariIndonesian } from '../utils/bookingUtils';
 
 interface BookingHistoryProps {
   bookings: Booking[];
@@ -288,6 +288,7 @@ export default function BookingHistory({
                   <tr className="bg-neutral-50 dark:bg-neutral-850 text-[10px] font-extrabold uppercase text-neutral-400 dark:text-neutral-500 tracking-wider text-left border-b border-neutral-200 dark:border-neutral-800">
                     <th className="py-3 px-4">Detail Pengajuan</th>
                     <th className="py-3 px-4">Kendaraan</th>
+                    <th className="py-3 px-4">Hari</th>
                     <th className="py-3 px-4">Tanggal Penggunaan</th>
                     <th className="py-3 px-4">Penanggung Jawab</th>
                     <th className="py-3 px-4">Status</th>
@@ -309,6 +310,13 @@ export default function BookingHistory({
                         <td className="py-4 px-4">
                           <p className="text-xs font-bold text-neutral-700 dark:text-neutral-300">{vehicle?.nama_kendaraan || "Dihapus"}</p>
                           <p className="text-[10px] text-neutral-500 dark:text-neutral-450 font-mono mt-0.5">{vehicle?.nomor_polisi}</p>
+                        </td>
+
+                        {/* Hari */}
+                        <td className="py-4 px-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-[#0F8A5F] dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40">
+                            {getHariIndonesian(b.tanggal_mulai, b.tanggal_selesai)}
+                          </span>
                         </td>
 
                         {/* Schedule times */}
@@ -437,8 +445,13 @@ export default function BookingHistory({
                         <span className="text-neutral-550 dark:text-neutral-400 font-mono">{vehicle?.nomor_polisi}</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase">Waktu</span>
-                        <span className="font-bold text-neutral-700 dark:text-neutral-200 block">{b.tanggal_mulai}</span>
+                        <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase">Hari & Waktu</span>
+                        <span className="font-bold text-neutral-700 dark:text-neutral-200 block">
+                          <span className="text-[#0F8A5F] dark:text-emerald-400 font-extrabold mr-1">
+                            {getHariIndonesian(b.tanggal_mulai, b.tanggal_selesai)},
+                          </span>
+                          {b.tanggal_mulai}
+                        </span>
                         <span className="text-neutral-550 dark:text-neutral-400 font-semibold">{b.jam_mulai} - {b.jam_selesai} WIB</span>
                       </div>
                     </div>

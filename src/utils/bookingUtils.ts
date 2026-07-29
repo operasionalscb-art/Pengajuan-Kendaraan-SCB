@@ -68,3 +68,33 @@ export function checkBookingConflict(
 
   return null;
 }
+
+/**
+ * Returns the Indonesian day name for a YYYY-MM-DD date string.
+ * If start and end dates are provided and different, returns a range e.g. "Senin - Rabu".
+ */
+export function getHariIndonesian(tanggalMulai: string, tanggalSelesai?: string): string {
+  const parseHari = (str: string) => {
+    if (!str) return '';
+    const parts = str.trim().split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const date = new Date(year, month, day);
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      return days[date.getDay()] || '';
+    }
+    return '';
+  };
+
+  const hariMulai = parseHari(tanggalMulai);
+  if (!tanggalSelesai || tanggalSelesai === tanggalMulai) {
+    return hariMulai || '-';
+  }
+  const hariSelesai = parseHari(tanggalSelesai);
+  if (hariSelesai && hariSelesai !== hariMulai) {
+    return `${hariMulai} - ${hariSelesai}`;
+  }
+  return hariMulai || '-';
+}
