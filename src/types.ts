@@ -23,11 +23,13 @@ export interface Booking {
   jabatan: string;
   kegiatan: string;
   tujuan: string;
+  tujuan_kota_kabupaten?: string;
   jumlah_penumpang: number;
   daftar_penumpang: string[];
   status: BookingStatus;
   created_at: string;
   keterangan_tambahan?: string;
+  tujuan_place_id?: string;
 }
 
 export interface AppNotification {

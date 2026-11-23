@@ -8,8 +8,7 @@
         "nomor_polisi": "string",
         "jenis": "string",
         "kapasitas": "number",
-        "status": "string",
-        "foto": "string"
+        "status": "string"
       }
     },
     "bookings": {
@@ -17,18 +16,19 @@
       "fields": {
         "id": "string",
         "kendaraan_id": "string",
-        "pemohon": "string",
         "penanggung_jawab": "string",
         "jabatan": "string",
         "kegiatan": "string",
         "tujuan": "string",
+        "tujuan_kota_kabupaten": "string (optional)",
+        "tujuan_place_id": "string (optional)",
         "tanggal_mulai": "string",
         "tanggal_selesai": "string",
         "jam_mulai": "string",
         "jam_selesai": "string",
         "jumlah_penumpang": "number",
         "daftar_penumpang": "array (string)",
-        "keterangan_tambahan": "string",
+        "keterangan_tambahan": "string (optional)",
         "status": "string",
         "created_at": "string"
       }
@@ -51,7 +51,36 @@
         "nama": "string",
         "jabatan": "string",
         "role": "string",
-        "password": "string"
+        "password": "string (optional)",
+        "status": "string (optional)",
+        "permissions": "array (string, optional)"
+      }
+    },
+    "email_logs": {
+      "description": "Log riwayat pengiriman notifikasi email ke operator/pemohon",
+      "fields": {
+        "id": "string",
+        "recipientEmail": "string",
+        "recipientName": "string",
+        "recipientRole": "string",
+        "subject": "string",
+        "body": "string",
+        "sentAt": "string",
+        "triggerEvent": "string",
+        "status": "string",
+        "bookingId": "string (optional)"
+      }
+    },
+    "settings": {
+      "description": "Konfigurasi sistem dan penanda inisialisasi database",
+      "fields": {
+        "operatorEmail": "string",
+        "notifyNewBooking": "boolean",
+        "notifyStatusChange": "boolean",
+        "notifyUserRegistration": "boolean",
+        "enableDirectMailto": "boolean",
+        "initialized": "boolean",
+        "seededAt": "string"
       }
     }
   }

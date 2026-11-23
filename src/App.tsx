@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Vehicle, Booking, AppNotification, AppRole, BookingStatus, UserProfile, EmailNotificationLog, EmailSettings } from './types';
-import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from './mockData';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import BookingForm from './components/BookingForm';
@@ -11,6 +10,7 @@ import CalendarView from './components/CalendarView';
 import AuthScreen from './components/AuthScreen';
 import AccountManager from './components/AccountManager';
 import EmailNotificationManager from './components/EmailNotificationManager';
+import { APIProvider } from '@vis.gl/react-google-maps';
 
 import { 
   seedInitialData,
@@ -24,7 +24,8 @@ import {
   addOrUpdateBooking,
   deleteBookingDoc,
   addOrUpdateNotification,
-  deleteNotificationDoc,
+  markNotificationReadDoc,
+  deleteNotificationsBatch,
   deleteEmailLogDoc,
   saveEmailSettingsDoc
 } from './lib/firebase';
@@ -51,11 +52,22 @@ import {
   Lock
 } from 'lucide-react';
 
+const GOOGLE_MAPS_API_KEY = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined) || '';
+
 export default function App() {
+  const [mapsQuotaExceeded, setMapsQuotaExceeded] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleQuotaExceeded = () => setMapsQuotaExceeded(true);
+    window.addEventListener('gmp-quota-exceeded', handleQuotaExceeded);
+    return () => window.removeEventListener('gmp-quota-exceeded', handleQuotaExceeded);
+  }, []);
+
   // 1. Core State Managers (Populated via real-time Firestore sync)
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
   const [emailLogs, setEmailLogs] = useState<EmailNotificationLog[]>([]);
   const [emailSettings, setEmailSettings] = useState<EmailSettings>({
     operatorEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
@@ -64,15 +76,14 @@ export default function App() {
     notifyUserRegistration: true,
     enableDirectMailto: true
   });
+  const remindedIdsRef = useRef<Set<string>>(new Set());
 
-  // Seed database and set up subscriptions
+  // Seed database once and set up core subscriptions
   useEffect(() => {
     let active = true;
     let unsubVehicles: (() => void) | null = null;
     let unsubBookings: (() => void) | null = null;
     let unsubNotifs: (() => void) | null = null;
-    let unsubEmailLogs: (() => void) | null = null;
-    let unsubEmailSettings: (() => void) | null = null;
 
     seedInitialData().then(() => {
       if (!active) return;
@@ -84,12 +95,7 @@ export default function App() {
       });
       unsubNotifs = subscribeNotifications((data) => {
         setNotifications(data);
-      });
-      unsubEmailLogs = subscribeEmailLogs((data) => {
-        setEmailLogs(data);
-      });
-      unsubEmailSettings = subscribeEmailSettings((data) => {
-        setEmailSettings(data);
+        setNotificationsLoaded(true);
       });
     }).catch((err) => {
       console.error('Error seeding/subscribing to Firestore:', err);
@@ -100,8 +106,6 @@ export default function App() {
       if (unsubVehicles) unsubVehicles();
       if (unsubBookings) unsubBookings();
       if (unsubNotifs) unsubNotifs();
-      if (unsubEmailLogs) unsubEmailLogs();
-      if (unsubEmailSettings) unsubEmailSettings();
     };
   }, []);
 
@@ -138,6 +142,42 @@ export default function App() {
 
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
 
+  // Role-scoped subscription for email logs (only Operator & Super Admin need email outbox logs)
+  useEffect(() => {
+    if (currentRole !== 'Super Admin' && currentRole !== 'Operator') {
+      setEmailLogs([]);
+      return;
+    }
+    const unsub = subscribeEmailLogs((data) => {
+      setEmailLogs(data);
+    });
+    return () => unsub();
+  }, [currentRole]);
+
+  // Auth-scoped subscription for email notification settings
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeEmailSettings((data) => {
+      setEmailSettings(data);
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  // Redirect to safe tab if role or auth changes while on a restricted tab
+  useEffect(() => {
+    if (currentTab === 'pengguna' && currentRole !== 'Super Admin') {
+      setCurrentTab('dashboard');
+    } else if (
+      (currentTab === 'kendaraan' || currentTab === 'notifikasi-email') &&
+      currentRole !== 'Super Admin' &&
+      currentRole !== 'Operator'
+    ) {
+      setCurrentTab('dashboard');
+    } else if (currentTab === 'riwayat' && !currentUser) {
+      setCurrentTab('dashboard');
+    }
+  }, [currentTab, currentRole, currentUser]);
+
   // Dark mode state backed by LocalStorage
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('scb_dark_mode');
@@ -153,11 +193,10 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // H-1 booking reminder trigger
-  // Look for any approved bookings for tomorrow based on today's actual local date.
+  // H-1 booking reminder trigger (waits for notificationsLoaded to avoid duplicate startup writes)
   useEffect(() => {
-    if (bookings.length === 0) return;
-    
+    if (!notificationsLoaded || bookings.length === 0) return;
+
     const getTomorrowStr = () => {
       const d = new Date();
       d.setDate(d.getDate() + 1);
@@ -169,17 +208,29 @@ export default function App() {
 
     const tomorrowStr = getTomorrowStr();
     const tomorrowBooking = bookings.find(b => b.tanggal_mulai === tomorrowStr && b.status === 'Disetujui');
-    
-    // Check if reminder already exists to avoid spamming
     const reminderId = `REMIND-${tomorrowStr}`;
-    const alreadyExists = notifications.some(n => n.id === reminderId);
 
-    if (tomorrowBooking && !alreadyExists) {
+    if (
+      remindedIdsRef.current.has(reminderId) ||
+      localStorage.getItem(`scb_reminded_${reminderId}`) === 'true'
+    ) {
+      return;
+    }
+
+    const alreadyExists = notifications.some(n => n.id === reminderId);
+    if (alreadyExists) {
+      remindedIdsRef.current.add(reminderId);
+      localStorage.setItem(`scb_reminded_${reminderId}`, 'true');
+      return;
+    }
+
+    if (tomorrowBooking) {
+      remindedIdsRef.current.add(reminderId);
+      localStorage.setItem(`scb_reminded_${reminderId}`, 'true');
       const v = vehicles.find(car => car.id === tomorrowBooking.kendaraan_id);
-      
       const d = new Date();
       const timestampStr = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} 08:00`;
-      
+
       const newReminder: AppNotification = {
         id: reminderId,
         title: 'Pengingat H-1 Keberangkatan',
@@ -191,7 +242,7 @@ export default function App() {
 
       addOrUpdateNotification(newReminder).catch(console.error);
     }
-  }, [bookings, vehicles, notifications]);
+  }, [notificationsLoaded, bookings, vehicles, notifications]);
 
   useEffect(() => {
     localStorage.setItem('scb_role', currentRole);
@@ -215,15 +266,20 @@ export default function App() {
   };
 
   const handleClearNotifications = () => {
+    if (notifications.length === 0) return;
     notifications.forEach((n) => {
-      deleteNotificationDoc(n.id).catch(console.error);
+      if (n.id.startsWith('REMIND-')) {
+        remindedIdsRef.current.add(n.id);
+        localStorage.setItem(`scb_reminded_${n.id}`, 'true');
+      }
     });
+    deleteNotificationsBatch(notifications.map((n) => n.id)).catch(console.error);
   };
 
   const handleMarkNotificationRead = (id: string) => {
     const target = notifications.find(n => n.id === id);
-    if (target) {
-      addOrUpdateNotification({ ...target, isRead: true }).catch(console.error);
+    if (target && !target.isRead) {
+      markNotificationReadDoc(id).catch(console.error);
     }
   };
 
@@ -307,7 +363,7 @@ export default function App() {
       if (emailSettings.notifyStatusChange) {
         const { subject, body } = buildStatusChangeEmailBody(b, newStatus, v?.nama_kendaraan);
         sendOperatorEmailNotification({
-          recipientEmail: `${emailSettings.operatorEmail}, ${b.penanggung_jawab}`,
+          recipientEmail: emailSettings.operatorEmail || 'operasional.scb@gmail.com, operator.scb@gmail.com',
           recipientName: b.penanggung_jawab || 'Pemohon',
           recipientRole: 'Pemohon',
           subject,
@@ -481,7 +537,7 @@ export default function App() {
     role: 'Pemohon'
   };
 
-  return (
+  const contentTree = (
     <div className="min-h-screen bg-[#F3F4F6] dark:bg-neutral-950 flex flex-col lg:flex-row antialiased font-sans text-neutral-800 dark:text-neutral-100 transition-colors duration-200">
       
       {/* Sidebar navigation system */}
@@ -501,6 +557,22 @@ export default function App() {
 
       {/* Main Content Workspace viewport */}
       <main className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+        {mapsQuotaExceeded && (
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2.5 text-xs md:text-sm text-center sticky top-0 z-50 shadow-sm">
+            <span>
+              Google Maps Platform quota reached. If you are the app owner, visit{' '}
+              <a
+                href="https://developers.google.com/maps/ai/ai-studio?utm_campaign=gmp_mcp_codeassist_v1_aistudio#quota_exceeded_errors"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline font-semibold text-amber-950 hover:text-amber-800"
+              >
+                maps developer site
+              </a>{' '}
+              for instructions to update your account.
+            </span>
+          </div>
+        )}
         
         {/* Desktop Top Nav Header */}
         <header className="hidden lg:flex items-center justify-between h-20 bg-white dark:bg-neutral-900 px-8 border-b border-neutral-150 dark:border-neutral-800 shrink-0 select-none transition-colors duration-200">
@@ -678,4 +750,19 @@ export default function App() {
 
     </div>
   );
+
+  if (GOOGLE_MAPS_API_KEY) {
+    return (
+      <APIProvider
+        apiKey={GOOGLE_MAPS_API_KEY}
+        libraries={['places', 'marker', 'routes']}
+        language="id"
+        region="ID"
+      >
+        {contentTree}
+      </APIProvider>
+    );
+  }
+
+  return contentTree;
 }

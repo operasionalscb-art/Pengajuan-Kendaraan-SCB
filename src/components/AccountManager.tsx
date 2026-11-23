@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, AppRole } from '../types';
-import { subscribeUsers, addOrUpdateUser, deleteUserDoc } from '../lib/firebase';
+import { subscribeUsers, addOrUpdateUser, deleteUserDoc, batchUpsertUsers, batchDeleteUsers, replaceUserEmailDoc } from '../lib/firebase';
 import { 
   Users, 
   UserPlus, 
@@ -155,7 +155,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     if (selectedEmails.length === 0) return;
     const targets = users.filter(u => selectedEmails.includes(u.email));
     
-    Promise.all(targets.map(u => addOrUpdateUser({ ...u, status }))).then(() => {
+    batchUpsertUsers(targets.map(u => ({ ...u, status }))).then(() => {
       pushNotification(
         'Pembaruan Akun Massal',
         `Status ${selectedEmails.length} akun berhasil diubah menjadi ${status.toUpperCase()}.`,
@@ -179,7 +179,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
       return;
     }
 
-    Promise.all(targets.map(u => addOrUpdateUser({ 
+    batchUpsertUsers(targets.map(u => ({ 
       ...u, 
       role: newRole,
       permissions: getDefaultPermissionsForRole(newRole)
@@ -206,7 +206,7 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
     }
 
     if (confirm(`Apakah Anda yakin ingin menghapus ${selectedEmails.length} akun terdaftar secara permanen?`)) {
-      Promise.all(selectedEmails.map(e => deleteUserDoc(e))).then(() => {
+      batchDeleteUsers(selectedEmails).then(() => {
         pushNotification(
           'Pembersihan Akun Massal',
           `${selectedEmails.length} akun berhasil dihapus dari sistem.`,
@@ -282,15 +282,12 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         return;
       }
 
-      // Check if email changed and is already taken
       if (editingEmail.toLowerCase() !== emailClean) {
         const alreadyExists = users.some(u => u.email.toLowerCase() === emailClean);
         if (alreadyExists) {
           setErrorMsg('Email baru ini sudah digunakan oleh akun lain.');
           return;
         }
-        // Delete old email record if changed
-        deleteUserDoc(editingEmail);
       }
 
       const updatedUser: UserProfile = {
@@ -303,7 +300,11 @@ export default function AccountManager({ currentUser, onUpdateCurrentUser, pushN
         permissions: formPermissions
       };
 
-      addOrUpdateUser(updatedUser).then(() => {
+      const savePromise = editingEmail.toLowerCase() !== emailClean
+        ? replaceUserEmailDoc(editingEmail, updatedUser)
+        : addOrUpdateUser(updatedUser);
+
+      savePromise.then(() => {
         // If editing self, update the current active user session!
         if (currentUser && currentUser.email.toLowerCase() === editingEmail.toLowerCase()) {
           onUpdateCurrentUser(updatedUser);

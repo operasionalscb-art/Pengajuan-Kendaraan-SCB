@@ -1,111 +1,156 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  initializeFirestore, 
-  collection, 
-  getDocs, 
-  setDoc, 
-  doc, 
-  onSnapshot, 
-  updateDoc, 
+import {
+  initializeFirestore,
+  collection,
+  getDocs,
+  getDoc,
+  getDocFromServer,
+  setDoc,
+  doc,
+  onSnapshot,
+  updateDoc,
   deleteDoc,
-  writeBatch
+  writeBatch,
+  query,
+  orderBy,
+  limit
 } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { Vehicle, Booking, AppNotification, UserProfile, AppRole, EmailNotificationLog, EmailSettings } from '../types';
 import { INITIAL_VEHICLES, INITIAL_BOOKINGS } from '../mockData';
-
-// Web app Firebase configuration from firebase-applet-config.json
-const firebaseConfig = {
-  apiKey: "AIzaSyDuZiVoJP37dUDyVfVAm-byhSIEQawvdv4",
-  authDomain: "vast-summit-scf5x.firebaseapp.com",
-  projectId: "vast-summit-scf5x",
-  storageBucket: "vast-summit-scf5x.firebasestorage.app",
-  messagingSenderId: "762855733058",
-  appId: "1:762855733058:web:01372b69009583b384badb"
-};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore using the designated databaseId as the third parameter
-export const db = initializeFirestore(app, {}, "ai-studio-46166df5-8b36-4010-a40f-cc8736483d1e");
+// Initialize Firestore with designated databaseId and ignoreUndefinedProperties to prevent undefined-field runtime crashes
+export const db = initializeFirestore(
+  app,
+  { ignoreUndefinedProperties: true },
+  firebaseConfig.firestoreDatabaseId
+);
 
-// Seed Initial Data if collections are empty
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Non-blocking startup connection check
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error('Please check your Firebase configuration: the client is offline.');
+    }
+  }
+}
+void testConnection();
+
+const SEED_MARKER_STORAGE_KEY = 'scb_firestore_seeded_v1';
+
+// Seed Initial Data once without scanning entire collections on every page load
 export async function seedInitialData() {
   try {
-    // 1. Seed Vehicles
-    const vehiclesCol = collection(db, 'vehicles');
-    const vehiclesSnapshot = await getDocs(vehiclesCol);
+    if (typeof window !== 'undefined' && localStorage.getItem(SEED_MARKER_STORAGE_KEY) === 'true') {
+      return;
+    }
+
+    const markerRef = doc(db, 'settings', 'seed_status');
+    const markerSnap = await getDoc(markerRef);
+    if (markerSnap.exists()) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SEED_MARKER_STORAGE_KEY, 'true');
+      }
+      return;
+    }
+
+    // Use limit(1) instead of full collection scans when marker doesn't exist yet
+    const [vehiclesSnapshot, bookingsSnapshot, usersSnapshot, notifsSnapshot] = await Promise.all([
+      getDocs(query(collection(db, 'vehicles'), limit(1))),
+      getDocs(query(collection(db, 'bookings'), limit(1))),
+      getDocs(query(collection(db, 'users'), limit(1))),
+      getDocs(query(collection(db, 'notifications'), limit(1))),
+    ]);
+
+    const batch = writeBatch(db);
+    let hasWrites = false;
+
     if (vehiclesSnapshot.empty) {
-      console.log('Seeding initial vehicles to Firestore...');
-      const batch = writeBatch(db);
       INITIAL_VEHICLES.forEach((v) => {
-        const docRef = doc(db, 'vehicles', v.id);
-        batch.set(docRef, v);
+        batch.set(doc(db, 'vehicles', v.id), v);
       });
-      await batch.commit();
+      hasWrites = true;
     }
 
-    // 2. Seed Bookings
-    const bookingsCol = collection(db, 'bookings');
-    const bookingsSnapshot = await getDocs(bookingsCol);
     if (bookingsSnapshot.empty) {
-      console.log('Seeding initial bookings to Firestore...');
-      const batch = writeBatch(db);
       INITIAL_BOOKINGS.forEach((b) => {
-        const docRef = doc(db, 'bookings', b.id);
-        batch.set(docRef, b);
+        batch.set(doc(db, 'bookings', b.id), b);
       });
-      await batch.commit();
+      hasWrites = true;
     }
 
-    // 3. Seed Registered Users
-    const usersCol = collection(db, 'users');
-    const usersSnapshot = await getDocs(usersCol);
     if (usersSnapshot.empty) {
-      console.log('Seeding initial users to Firestore...');
-      const presets = [
+      const presets: UserProfile[] = [
         {
           email: 'operasional.scb@gmail.com',
           nama: 'Super Admin Sarpras',
           jabatan: 'Kepala Bagian Sarpras',
           role: 'Super Admin' as AppRole,
-          password: 'admin123'
+          password: 'admin123',
+          status: 'Disetujui'
         },
         {
           email: 'operator.scb@gmail.com',
           nama: 'Ust. Operator Sarpras',
           jabatan: 'Staf Operasional Sarpras',
           role: 'Operator' as AppRole,
-          password: 'operator123'
+          password: 'operator123',
+          status: 'Disetujui'
         },
         {
           email: 'kesiswaan.cendekia@baznas.sch.id',
           nama: 'Ust. Ahmad Fauzi',
           jabatan: 'Wakasek Kesiswaan',
           role: 'Pemohon' as AppRole,
-          password: 'pegawai123'
+          password: 'pegawai123',
+          status: 'Disetujui'
         },
         {
           email: 'humas.cendekia@baznas.sch.id',
           nama: 'Ustz. Rahma Wardani',
           jabatan: 'Koordinator Humas',
           role: 'Pemohon' as AppRole,
-          password: 'pegawai123'
+          password: 'pegawai123',
+          status: 'Disetujui'
         }
       ];
-      const batch = writeBatch(db);
       presets.forEach((u) => {
-        const docRef = doc(db, 'users', u.email.toLowerCase());
-        batch.set(docRef, u);
+        batch.set(doc(db, 'users', u.email.toLowerCase()), u);
       });
-      await batch.commit();
+      hasWrites = true;
     }
 
-    // 4. Seed Notifications
-    const notifsCol = collection(db, 'notifications');
-    const notifsSnapshot = await getDocs(notifsCol);
     if (notifsSnapshot.empty) {
-      console.log('Seeding initial notifications to Firestore...');
       const initialNotifs: AppNotification[] = [
         {
           id: 'N-001',
@@ -124,15 +169,21 @@ export async function seedInitialData() {
           type: 'success'
         }
       ];
-      const batch = writeBatch(db);
       initialNotifs.forEach((n) => {
-        const docRef = doc(db, 'notifications', n.id);
-        batch.set(docRef, n);
+        batch.set(doc(db, 'notifications', n.id), n);
       });
-      await batch.commit();
+      hasWrites = true;
     }
-    
-    console.log('Firestore seeding completed successfully.');
+
+    batch.set(markerRef, { initialized: true, seededAt: new Date().toISOString() });
+    await batch.commit();
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SEED_MARKER_STORAGE_KEY, 'true');
+    }
+    if (hasWrites) {
+      console.log('Firestore initial seeding completed.');
+    }
   } catch (error) {
     console.error('Error seeding initial data to Firestore:', error);
   }
@@ -143,10 +194,9 @@ export async function seedInitialData() {
 export function subscribeVehicles(onUpdate: (vehicles: Vehicle[]) => void) {
   return onSnapshot(collection(db, 'vehicles'), (snapshot) => {
     const list: Vehicle[] = [];
-    snapshot.forEach((doc) => {
-      list.push(doc.data() as Vehicle);
+    snapshot.forEach((d) => {
+      list.push(d.data() as Vehicle);
     });
-    // Sort vehicles by ID
     list.sort((a, b) => a.id.localeCompare(b.id));
     onUpdate(list);
   }, (error) => {
@@ -155,12 +205,12 @@ export function subscribeVehicles(onUpdate: (vehicles: Vehicle[]) => void) {
 }
 
 export function subscribeBookings(onUpdate: (bookings: Booking[]) => void) {
-  return onSnapshot(collection(db, 'bookings'), (snapshot) => {
+  const q = query(collection(db, 'bookings'), orderBy('tanggal_mulai', 'desc'), limit(200));
+  return onSnapshot(q, (snapshot) => {
     const list: Booking[] = [];
-    snapshot.forEach((doc) => {
-      list.push(doc.data() as Booking);
+    snapshot.forEach((d) => {
+      list.push(d.data() as Booking);
     });
-    // Sort bookings by creation date descending
     list.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
     onUpdate(list);
   }, (error) => {
@@ -169,13 +219,12 @@ export function subscribeBookings(onUpdate: (bookings: Booking[]) => void) {
 }
 
 export function subscribeNotifications(onUpdate: (notifications: AppNotification[]) => void) {
-  return onSnapshot(collection(db, 'notifications'), (snapshot) => {
+  const q = query(collection(db, 'notifications'), orderBy('id', 'desc'), limit(30));
+  return onSnapshot(q, (snapshot) => {
     const list: AppNotification[] = [];
-    snapshot.forEach((doc) => {
-      list.push(doc.data() as AppNotification);
+    snapshot.forEach((d) => {
+      list.push(d.data() as AppNotification);
     });
-    // Sort notifications: newer first
-    // Since timestamp is formatted like '12-06 08:00', we can sort by id or timestamp string if id contains timestamp
     list.sort((a, b) => b.id.localeCompare(a.id));
     onUpdate(list);
   }, (error) => {
@@ -186,8 +235,8 @@ export function subscribeNotifications(onUpdate: (notifications: AppNotification
 export function subscribeUsers(onUpdate: (users: UserProfile[]) => void) {
   return onSnapshot(collection(db, 'users'), (snapshot) => {
     const list: UserProfile[] = [];
-    snapshot.forEach((doc) => {
-      list.push(doc.data() as UserProfile);
+    snapshot.forEach((d) => {
+      list.push(d.data() as UserProfile);
     });
     onUpdate(list);
   }, (error) => {
@@ -196,12 +245,12 @@ export function subscribeUsers(onUpdate: (users: UserProfile[]) => void) {
 }
 
 export function subscribeEmailLogs(onUpdate: (logs: EmailNotificationLog[]) => void) {
-  return onSnapshot(collection(db, 'email_logs'), (snapshot) => {
+  const q = query(collection(db, 'email_logs'), orderBy('id', 'desc'), limit(100));
+  return onSnapshot(q, (snapshot) => {
     const list: EmailNotificationLog[] = [];
-    snapshot.forEach((doc) => {
-      list.push(doc.data() as EmailNotificationLog);
+    snapshot.forEach((d) => {
+      list.push(d.data() as EmailNotificationLog);
     });
-    // Newer first
     list.sort((a, b) => b.id.localeCompare(a.id));
     onUpdate(list);
   }, (error) => {
@@ -214,7 +263,6 @@ export function subscribeEmailSettings(onUpdate: (settings: EmailSettings) => vo
     if (snapshot.exists()) {
       onUpdate(snapshot.data() as EmailSettings);
     } else {
-      // Default settings
       const defaultSettings: EmailSettings = {
         operatorEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
         notifyNewBooking: true,
@@ -230,59 +278,190 @@ export function subscribeEmailSettings(onUpdate: (settings: EmailSettings) => vo
   });
 }
 
-// ------------------- Firestore Mutations -------------------
+// ------------------- Point Reads & Firestore Mutations -------------------
+
+export async function getUserByEmail(email: string): Promise<UserProfile | null> {
+  const cleanEmail = email.trim().toLowerCase();
+  const docRef = doc(db, 'users', cleanEmail);
+  try {
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    return snap.data() as UserProfile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `users/${cleanEmail}`);
+  }
+}
 
 export async function addOrUpdateVehicle(vehicle: Vehicle) {
   const docRef = doc(db, 'vehicles', vehicle.id);
-  await setDoc(docRef, vehicle);
+  try {
+    await setDoc(docRef, vehicle);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `vehicles/${vehicle.id}`);
+  }
 }
 
 export async function deleteVehicleDoc(vehicleId: string) {
   const docRef = doc(db, 'vehicles', vehicleId);
-  await deleteDoc(docRef);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `vehicles/${vehicleId}`);
+  }
 }
 
 export async function addOrUpdateBooking(booking: Booking) {
   const docRef = doc(db, 'bookings', booking.id);
-  await setDoc(docRef, booking);
+  try {
+    await setDoc(docRef, booking);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `bookings/${booking.id}`);
+  }
 }
 
 export async function deleteBookingDoc(bookingId: string) {
   const docRef = doc(db, 'bookings', bookingId);
-  await deleteDoc(docRef);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `bookings/${bookingId}`);
+  }
 }
 
 export async function addOrUpdateNotification(notification: AppNotification) {
   const docRef = doc(db, 'notifications', notification.id);
-  await setDoc(docRef, notification);
+  try {
+    await setDoc(docRef, notification);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `notifications/${notification.id}`);
+  }
+}
+
+export async function markNotificationReadDoc(notificationId: string) {
+  const docRef = doc(db, 'notifications', notificationId);
+  try {
+    await updateDoc(docRef, { isRead: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `notifications/${notificationId}`);
+  }
 }
 
 export async function deleteNotificationDoc(notificationId: string) {
   const docRef = doc(db, 'notifications', notificationId);
-  await deleteDoc(docRef);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `notifications/${notificationId}`);
+  }
+}
+
+export async function deleteNotificationsBatch(notificationIds: string[]) {
+  if (notificationIds.length === 0) return;
+  try {
+    for (let i = 0; i < notificationIds.length; i += 450) {
+      const chunk = notificationIds.slice(i, i + 450);
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        batch.delete(doc(db, 'notifications', id));
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'notifications');
+  }
 }
 
 export async function addOrUpdateUser(user: UserProfile) {
-  const docRef = doc(db, 'users', user.email.toLowerCase());
-  await setDoc(docRef, user);
+  const cleanEmail = user.email.trim().toLowerCase();
+  const docRef = doc(db, 'users', cleanEmail);
+  try {
+    await setDoc(docRef, { ...user, email: cleanEmail });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${cleanEmail}`);
+  }
+}
+
+export async function replaceUserEmailDoc(oldEmail: string, updatedUser: UserProfile) {
+  const oldClean = oldEmail.trim().toLowerCase();
+  const newClean = updatedUser.email.trim().toLowerCase();
+  try {
+    const batch = writeBatch(db);
+    if (oldClean !== newClean) {
+      batch.delete(doc(db, 'users', oldClean));
+    }
+    batch.set(doc(db, 'users', newClean), { ...updatedUser, email: newClean });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `users/${newClean}`);
+  }
+}
+
+export async function batchUpsertUsers(users: UserProfile[]) {
+  if (users.length === 0) return;
+  try {
+    for (let i = 0; i < users.length; i += 450) {
+      const chunk = users.slice(i, i + 450);
+      const batch = writeBatch(db);
+      chunk.forEach((u) => {
+        const cleanEmail = u.email.trim().toLowerCase();
+        batch.set(doc(db, 'users', cleanEmail), { ...u, email: cleanEmail });
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'users');
+  }
 }
 
 export async function deleteUserDoc(email: string) {
-  const docRef = doc(db, 'users', email.toLowerCase());
-  await deleteDoc(docRef);
+  const cleanEmail = email.trim().toLowerCase();
+  const docRef = doc(db, 'users', cleanEmail);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `users/${cleanEmail}`);
+  }
+}
+
+export async function batchDeleteUsers(emails: string[]) {
+  if (emails.length === 0) return;
+  try {
+    for (let i = 0; i < emails.length; i += 450) {
+      const chunk = emails.slice(i, i + 450);
+      const batch = writeBatch(db);
+      chunk.forEach((email) => {
+        batch.delete(doc(db, 'users', email.trim().toLowerCase()));
+      });
+      await batch.commit();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, 'users');
+  }
 }
 
 export async function addEmailLog(log: EmailNotificationLog) {
   const docRef = doc(db, 'email_logs', log.id);
-  await setDoc(docRef, log);
+  try {
+    await setDoc(docRef, log);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `email_logs/${log.id}`);
+  }
 }
 
 export async function deleteEmailLogDoc(logId: string) {
   const docRef = doc(db, 'email_logs', logId);
-  await deleteDoc(docRef);
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `email_logs/${logId}`);
+  }
 }
 
 export async function saveEmailSettingsDoc(settings: EmailSettings) {
   const docRef = doc(db, 'settings', 'email_config');
-  await setDoc(docRef, settings);
+  try {
+    await setDoc(docRef, settings);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, 'settings/email_config');
+  }
 }

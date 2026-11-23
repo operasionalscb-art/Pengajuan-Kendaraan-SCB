@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { EmailNotificationLog, EmailSettings, AppRole, UserProfile } from '../types';
 import { 
   Mail, 
@@ -46,6 +46,14 @@ export default function EmailNotificationManager({
   const [notifyStatusChange, setNotifyStatusChange] = useState(emailSettings.notifyStatusChange ?? true);
   const [notifyUserRegistration, setNotifyUserRegistration] = useState(emailSettings.notifyUserRegistration ?? true);
   const [enableDirectMailto, setEnableDirectMailto] = useState(emailSettings.enableDirectMailto ?? true);
+
+  useEffect(() => {
+    setOperatorEmailInput(emailSettings.operatorEmail || 'operasional.scb@gmail.com, operator.scb@gmail.com');
+    setNotifyNewBooking(emailSettings.notifyNewBooking ?? true);
+    setNotifyStatusChange(emailSettings.notifyStatusChange ?? true);
+    setNotifyUserRegistration(emailSettings.notifyUserRegistration ?? true);
+    setEnableDirectMailto(emailSettings.enableDirectMailto ?? true);
+  }, [emailSettings]);
 
   const [settingsSavedMsg, setSettingsSavedMsg] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);

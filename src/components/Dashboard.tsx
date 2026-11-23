@@ -128,7 +128,7 @@ export default function Dashboard({
           <h2 className="text-2xl font-black tracking-tight">Portal Manajemen Armada & Peminjaman Kendaraan</h2>
           <p className="text-xs text-green-100 leading-relaxed font-medium">Sekolah Cendekia BAZNAS (SCB). Pastikan untuk mengecek ketersediaan kendaraan pada kalender dan lakukan pengajuan bebas hambatan serta tertib operasional.</p>
           
-          <div className="pt-3 flex gap-2">
+          <div className="pt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => onNavigateToTab('pengajuan')}
@@ -142,7 +142,7 @@ export default function Dashboard({
                 const cal = document.getElementById('calendar-section');
                 if (cal) cal.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="py-1.5 px-4 bg-green-700 hover:bg-green-750 text-white font-bold text-xs rounded-xl border border-green-600 transition"
+              className="py-1.5 px-4 bg-green-700 hover:bg-green-750 text-white font-bold text-xs rounded-xl border border-green-600 transition cursor-pointer"
             >
               Lihat Kalender Kerja
             </button>

@@ -35,7 +35,7 @@ export async function sendOperatorEmailNotification({
     sentAt: formattedTime,
     triggerEvent,
     status: 'Terkirim',
-    bookingId
+    ...(bookingId ? { bookingId } : {})
   };
 
   try {
@@ -60,7 +60,7 @@ Terdapat PENGAJUAN PEMINJAMAN KENDARAAN OPERASIONAL BARU yang membutuhkan perset
 • Nama Kegiatan    : ${booking.kegiatan}
 • Kendaraan        : ${vehicleName || 'Kendaraan Operasional'}
 • Tanggal / Jam    : ${booking.tanggal_mulai} s.d ${booking.tanggal_selesai} | Pukul ${booking.jam_mulai} - ${booking.jam_selesai} WIB
-• Tujuan Perjalanan: ${booking.tujuan}
+• Tujuan Perjalanan: ${booking.tujuan}${booking.tujuan_kota_kabupaten ? `\n• Kota / Kabupaten : ${booking.tujuan_kota_kabupaten}` : ''}
 • Jumlah Penumpang : ${booking.jumlah_penumpang} orang
 • Catatan Tambahan : ${booking.keterangan_tambahan || '-'}
 
@@ -86,7 +86,7 @@ Status peminjaman kendaraan operasional berikut telah diperbarui:
 • Kendaraan         : ${vehicleName || 'Kendaraan Operasional'}
 • Status Terbaru    : ${newStatus.toUpperCase()}
 • Tanggal / Waktu   : ${booking.tanggal_mulai} (${booking.jam_mulai} WIB)
-• Tujuan Perjalanan : ${booking.tujuan}
+• Tujuan Perjalanan : ${booking.tujuan}${booking.tujuan_kota_kabupaten ? `\n• Kota / Kabupaten  : ${booking.tujuan_kota_kabupaten}` : ''}
 
 Catatan:
 ${newStatus === 'Disetujui' 

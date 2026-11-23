@@ -7,7 +7,6 @@ import {
   Clock, 
   User, 
   Users, 
-  MapPin, 
   Info, 
   Plus, 
   Trash2, 
@@ -16,8 +15,10 @@ import {
   FileText,
   CalendarCheck2,
   BookmarkCheck,
-  Check
+  Check,
+  Building2
 } from 'lucide-react';
+import DestinationAutocomplete from './DestinationAutocomplete';
 
 interface BookingFormProps {
   vehicles: Vehicle[];
@@ -58,6 +59,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
   }, [currentUser]);
   const [kegiatan, setKegiatan] = useState('');
   const [tujuan, setTujuan] = useState('');
+  const [tujuanKotaKabupaten, setTujuanKotaKabupaten] = useState('');
+  const [tujuanPlaceId, setTujuanPlaceId] = useState<string | undefined>(undefined);
   const [keteranganTambahan, setKeteranganTambahan] = useState('');
   
   const [jumlahPenumpang, setJumlahPenumpang] = useState<number>(1);
@@ -96,6 +99,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
     }
     setKegiatan('');
     setTujuan('');
+    setTujuanKotaKabupaten('');
+    setTujuanPlaceId(undefined);
     setKeteranganTambahan('');
     setJumlahPenumpang(1);
     setDaftarPenumpang(['']);
@@ -213,6 +218,10 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
       setGeneralError('Tujuan perjalanan wajib diisi.');
       return;
     }
+    if (!tujuanKotaKabupaten.trim()) {
+      setGeneralError('Tujuan Kota / Kabupaten wajib diisi.');
+      return;
+    }
 
     // Capacity Block (Active vehicle check)
     if (activeVehicle && jumlahPenumpang > activeVehicle.kapasitas) {
@@ -255,6 +264,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
         jabatan: jabatan.trim() || 'Pegawai SCB',
         kegiatan: kegiatan.trim(),
         tujuan: tujuan.trim(),
+        tujuan_kota_kabupaten: tujuanKotaKabupaten.trim(),
+        ...(tujuanPlaceId ? { tujuan_place_id: tujuanPlaceId } : {}),
         jumlah_penumpang: jumlahPenumpang,
         daftar_penumpang: filteredPassengers.length > 0 ? filteredPassengers : [penanggungJawab.trim()],
         status: asStatus,
@@ -452,18 +463,61 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
 
               <div className="space-y-1.5 col-span-1 md:col-span-2">
                 <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">Tujuan Perjalanan / Lokasi Tujuan <span className="text-red-500">*</span></label>
+                <DestinationAutocomplete
+                  value={tujuan}
+                  onChange={(val, placeId, kotaKabupaten) => {
+                    setTujuan(val);
+                    setTujuanPlaceId(placeId);
+                    if (kotaKabupaten) {
+                      setTujuanKotaKabupaten(kotaKabupaten);
+                    }
+                  }}
+                  placeholder="Contoh: Bumi Perkemahan Cimandala, Sukaraja, Bogor"
+                />
+              </div>
+
+              <div className="space-y-1.5 col-span-1 md:col-span-2">
+                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
+                  Tujuan Kota / Kabupaten <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400">
-                    <MapPin className="w-4 h-4" />
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400 pointer-events-none">
+                    <Building2 className="w-4 h-4" />
                   </span>
                   <input
                     type="text"
-                    value={tujuan}
-                    onChange={(e) => setTujuan(e.target.value)}
-                    placeholder="Contoh: Bumi Perkemahan Cimandala, Sukaraja, Bogor"
+                    list="kota-kabupaten-options"
+                    value={tujuanKotaKabupaten}
+                    onChange={(e) => setTujuanKotaKabupaten(e.target.value)}
+                    placeholder="Contoh: Kabupaten Bogor / Kota Jakarta Selatan"
                     className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm outline-none focus:border-[#0F8A5F] text-neutral-800 dark:text-neutral-100"
                   />
+                  <datalist id="kota-kabupaten-options">
+                    <option value="Kabupaten Bogor" />
+                    <option value="Kota Bogor" />
+                    <option value="Kota Depok" />
+                    <option value="Kota Jakarta Pusat" />
+                    <option value="Kota Jakarta Timur" />
+                    <option value="Kota Jakarta Selatan" />
+                    <option value="Kota Jakarta Barat" />
+                    <option value="Kota Jakarta Utara" />
+                    <option value="Kota Bekasi" />
+                    <option value="Kabupaten Bekasi" />
+                    <option value="Kota Tangerang" />
+                    <option value="Kota Tangerang Selatan" />
+                    <option value="Kabupaten Tangerang" />
+                    <option value="Kota Bandung" />
+                    <option value="Kabupaten Bandung" />
+                    <option value="Kabupaten Sukabumi" />
+                    <option value="Kota Sukabumi" />
+                    <option value="Kabupaten Cianjur" />
+                    <option value="Kabupaten Karawang" />
+                    <option value="Kabupaten Purwakarta" />
+                  </datalist>
                 </div>
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                  Isi atau pilih Kota/Kabupaten tujuan untuk akurasi pemetaan wilayah pada laporan statistik.
+                </p>
               </div>
 
               <div className="space-y-1.5 col-span-1 md:col-span-2">

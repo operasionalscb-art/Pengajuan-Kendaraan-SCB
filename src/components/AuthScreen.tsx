@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { UserProfile, AppRole } from '../types';
-import { subscribeUsers, addOrUpdateUser } from '../lib/firebase';
+import { getUserByEmail, addOrUpdateUser } from '../lib/firebase';
 import { sendOperatorEmailNotification, buildNewUserRegistrationEmailBody } from '../lib/emailNotifier';
 import { 
   ShieldCheck, 
@@ -90,42 +90,12 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
     }
   ];
 
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = subscribeUsers((firestoreUsers) => {
-      setUsers(firestoreUsers);
-    });
-    return () => unsubscribe();
-  }, []);
+  const findPresetForEmail = (emailClean: string) =>
+    presets.find((p) => p.email.toLowerCase() === emailClean);
 
-  // Load existing accounts from Firestore or initialize with presets
-  const getRegisteredUsers = (): UserProfile[] => {
-    if (users.length > 0) {
-      return users.map(u => ({
-        ...u,
-        status: u.status || 'Disetujui'
-      }));
-    }
-    // Return presets as initial users fallback
-    return presets.map(p => ({
-      email: p.email,
-      nama: p.nama,
-      jabatan: p.jabatan,
-      role: p.role,
-      password: p.password,
-      status: 'Disetujui'
-    }));
-  };
-
-  const saveRegisteredUsers = (updatedUsers: UserProfile[]) => {
-    // Save to Firestore
-    updatedUsers.forEach((u) => {
-      addOrUpdateUser(u).catch(err => console.error('Error saving user to Firestore:', err));
-    });
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -140,69 +110,62 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       return;
     }
 
-    const users = getRegisteredUsers();
-    let matchedUser = users.find(u => u.email.toLowerCase() === emailClean);
+    setIsSubmitting(true);
+    try {
+      let matchedUser = await getUserByEmail(emailClean);
 
-    // If the email is the super admin and not registered yet, register it dynamically
-    if (!matchedUser && emailClean === 'operasional.scb@gmail.com') {
-      matchedUser = {
-        email: 'operasional.scb@gmail.com',
-        nama: 'Super Admin Sarpras',
-        jabatan: 'Kepala Bagian Sarpras',
-        role: 'Super Admin',
-        password: 'admin123',
-        status: 'Disetujui'
-      };
-      const updatedUsers = [...users, matchedUser];
-      saveRegisteredUsers(updatedUsers);
-    }
-
-    // If the email is the operator and not registered yet, register it dynamically
-    if (!matchedUser && emailClean === 'operator.scb@gmail.com') {
-      matchedUser = {
-        email: 'operator.scb@gmail.com',
-        nama: 'Ust. Operator Sarpras',
-        jabatan: 'Staf Operasional Sarpras',
-        role: 'Operator',
-        password: 'operator123',
-        status: 'Disetujui'
-      };
-      const updatedUsers = [...users, matchedUser];
-      saveRegisteredUsers(updatedUsers);
-    }
-
-    if (matchedUser) {
-      const correctPassword = matchedUser.password || 
-        (matchedUser.role === 'Super Admin' 
-          ? 'admin123' 
-          : matchedUser.role === 'Operator' 
-            ? 'operator123' 
-            : 'pegawai123');
-      if (correctPassword === loginPassword) {
-        // Check account approval status
-        const userStatus = matchedUser.status || 'Disetujui';
-        if (userStatus === 'Menunggu Persetujuan') {
-          setErrorMsg('Pendaftaran akun Anda sedang menunggu persetujuan (approval) oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
-          return;
+      if (!matchedUser) {
+        const presetMatch = findPresetForEmail(emailClean);
+        if (presetMatch && (emailClean === 'operasional.scb@gmail.com' || emailClean === 'operator.scb@gmail.com')) {
+          matchedUser = {
+            email: presetMatch.email,
+            nama: presetMatch.nama,
+            jabatan: presetMatch.jabatan,
+            role: presetMatch.role,
+            password: presetMatch.password,
+            status: 'Disetujui'
+          };
+          await addOrUpdateUser(matchedUser);
         }
-        if (userStatus === 'Ditolak') {
-          setErrorMsg('Mohon maaf, pendaftaran akun Anda telah ditolak oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
-          return;
-        }
-
-        setSuccessMsg(`Selamat datang kembali, ${matchedUser.nama}!`);
-        setTimeout(() => {
-          onLoginSuccess(matchedUser!);
-        }, 800);
-      } else {
-        setErrorMsg('Password yang Anda masukkan salah. Silakan coba lagi.');
       }
-    } else {
-      setErrorMsg('Email belum terdaftar. Silakan pilih tab "Daftar Akun" untuk mendaftarkan email baru Anda.');
+
+      if (matchedUser) {
+        const correctPassword = matchedUser.password ||
+          (matchedUser.role === 'Super Admin'
+            ? 'admin123'
+            : matchedUser.role === 'Operator'
+              ? 'operator123'
+              : 'pegawai123');
+        if (correctPassword === loginPassword) {
+          const userStatus = matchedUser.status || 'Disetujui';
+          if (userStatus === 'Menunggu Persetujuan') {
+            setErrorMsg('Pendaftaran akun Anda sedang menunggu persetujuan (approval) oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
+            return;
+          }
+          if (userStatus === 'Ditolak') {
+            setErrorMsg('Mohon maaf, pendaftaran akun Anda telah ditolak oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras.');
+            return;
+          }
+
+          setSuccessMsg(`Selamat datang kembali, ${matchedUser.nama}!`);
+          setTimeout(() => {
+            onLoginSuccess(matchedUser!);
+          }, 600);
+        } else {
+          setErrorMsg('Password yang Anda masukkan salah. Silakan coba lagi.');
+        }
+      } else {
+        setErrorMsg('Email belum terdaftar. Silakan pilih tab "Daftar Akun" untuk mendaftarkan email baru Anda.');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setErrorMsg('Gagal terhubung ke server otentikasi. Silakan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -231,96 +194,101 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       return;
     }
 
-    const users = getRegisteredUsers();
-    const alreadyExists = users.some(u => u.email.toLowerCase() === emailClean);
+    setIsSubmitting(true);
+    try {
+      const existingUser = await getUserByEmail(emailClean);
+      if (existingUser) {
+        setErrorMsg('Email ini sudah terdaftar. Silakan gunakan tab "Masuk" untuk login.');
+        return;
+      }
 
-    if (alreadyExists) {
-      setErrorMsg('Email ini sudah terdaftar. Silakan gunakan tab "Masuk" untuk login.');
-      return;
-    }
+      let determinedRole: AppRole = 'Pemohon';
+      if (emailClean === 'operasional.scb@gmail.com') {
+        determinedRole = 'Super Admin';
+      } else if (emailClean === 'operator.scb@gmail.com') {
+        determinedRole = 'Operator';
+      }
 
-    // Determine role: operasional.scb@gmail.com is forced to Super Admin, operator.scb to Operator, others default to Pemohon
-    let determinedRole: AppRole = 'Pemohon';
-    if (emailClean === 'operasional.scb@gmail.com') {
-      determinedRole = 'Super Admin';
-    } else if (emailClean === 'operator.scb@gmail.com') {
-      determinedRole = 'Operator';
-    }
+      const isApprovedAuto = determinedRole === 'Super Admin' || determinedRole === 'Operator';
+      const newUser: UserProfile = {
+        email: emailClean,
+        nama: nameClean,
+        jabatan: jabatanClean,
+        role: determinedRole,
+        password: regPassword,
+        status: isApprovedAuto ? 'Disetujui' : 'Menunggu Persetujuan'
+      };
 
-    const isApprovedAuto = determinedRole === 'Super Admin' || determinedRole === 'Operator';
-    const newUser: UserProfile = {
-      email: emailClean,
-      nama: nameClean,
-      jabatan: jabatanClean,
-      role: determinedRole,
-      password: regPassword,
-      status: isApprovedAuto ? 'Disetujui' : 'Menunggu Persetujuan'
-    };
+      await addOrUpdateUser(newUser);
 
-    const updatedUsers = [...users, newUser];
-    saveRegisteredUsers(updatedUsers);
+      // Dispatch automated email notification to Operator target email
+      const { subject, body } = buildNewUserRegistrationEmailBody(newUser);
+      sendOperatorEmailNotification({
+        recipientEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
+        recipientName: 'Operator & Super Admin',
+        recipientRole: 'Operator',
+        subject,
+        body,
+        triggerEvent: 'Pendaftaran Akun Baru'
+      }).catch(console.error);
 
-    // Dispatch automated email notification to Operator target email
-    const { subject, body } = buildNewUserRegistrationEmailBody(newUser);
-    sendOperatorEmailNotification({
-      recipientEmail: 'operasional.scb@gmail.com, operator.scb@gmail.com',
-      recipientName: 'Operator & Super Admin',
-      recipientRole: 'Operator',
-      subject,
-      body,
-      triggerEvent: 'Pendaftaran Akun Baru'
-    }).catch(console.error);
-
-    if (isApprovedAuto) {
-      setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);
-      setTimeout(() => {
-        onLoginSuccess(newUser);
-      }, 1000);
-    } else {
-      setSuccessMsg(`Pendaftaran Berhasil! Akun Anda sedang MENUNGGU PERSETUJUAN oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras untuk aktivasi.`);
-      setTimeout(() => {
-        setActiveTab('login');
-        setRegName('');
-        setRegEmail('');
-        setRegJabatan('');
-        setRegPassword('');
-        setRegPasswordConfirm('');
-        setSuccessMsg('');
-      }, 4000);
+      if (isApprovedAuto) {
+        setSuccessMsg(`Pendaftaran Berhasil! Masuk sebagai ${newUser.role}.`);
+        setTimeout(() => {
+          onLoginSuccess(newUser);
+        }, 800);
+      } else {
+        setSuccessMsg('Pendaftaran Berhasil! Akun Anda sedang MENUNGGU PERSETUJUAN oleh Super Admin Sarpras. Silakan hubungi bagian Sarpras untuk aktivasi.');
+        setTimeout(() => {
+          setActiveTab('login');
+          setRegName('');
+          setRegEmail('');
+          setRegJabatan('');
+          setRegPassword('');
+          setRegPasswordConfirm('');
+          setSuccessMsg('');
+        }, 4000);
+      }
+    } catch (err) {
+      console.error('Register error:', err);
+      setErrorMsg('Gagal menyimpan pendaftaran akun ke server. Silakan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleQuickLogin = (preset: typeof presets[0]) => {
+  const handleQuickLogin = async (preset: typeof presets[0]) => {
     setErrorMsg('');
     setSuccessMsg('');
-    
-    // Ensure preset is registered
-    const users = getRegisteredUsers();
-    const exists = users.find(u => u.email.toLowerCase() === preset.email.toLowerCase());
-    if (!exists) {
-      const updated = [...users, {
-        email: preset.email,
-        nama: preset.nama,
-        jabatan: preset.jabatan,
-        role: preset.role,
-        password: preset.password
-      }];
-      saveRegisteredUsers(updated);
-    }
+    setIsSubmitting(true);
 
-    setSuccessMsg(`Quick Login Berhasil: ${preset.nama}`);
-    setTimeout(() => {
-      onLoginSuccess({
+    try {
+      const existing = await getUserByEmail(preset.email);
+      const userToLogin: UserProfile = existing || {
         email: preset.email,
         nama: preset.nama,
         jabatan: preset.jabatan,
         role: preset.role,
-        password: preset.password
-      });
-    }, 600);
+        password: preset.password,
+        status: 'Disetujui'
+      };
+      if (!existing) {
+        await addOrUpdateUser(userToLogin);
+      }
+
+      setSuccessMsg(`Quick Login Berhasil: ${userToLogin.nama}`);
+      setTimeout(() => {
+        onLoginSuccess(userToLogin);
+      }, 500);
+    } catch (err) {
+      console.error('Quick login error:', err);
+      setErrorMsg('Gagal masuk dengan akun preset.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -342,45 +310,48 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
       return;
     }
 
-    const users = getRegisteredUsers();
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === currentUser.email.toLowerCase());
+    setIsSubmitting(true);
+    try {
+      const registeredUser = await getUserByEmail(currentUser.email);
+      let updatedUserRecord: UserProfile;
 
-    if (userIndex === -1) {
-      // Create user if not exists
-      const newUserRecord = {
-        ...currentUser,
-        password: newPassword
-      };
-      users.push(newUserRecord);
-      saveRegisteredUsers(users);
-    } else {
-      const registeredUser = users[userIndex];
-      const actualCurrentPassword = registeredUser.password || 
-        (registeredUser.role === 'Super Admin' 
-          ? 'admin123' 
-          : registeredUser.role === 'Operator' 
-            ? 'operator123' 
-            : 'pegawai123');
+      if (!registeredUser) {
+        updatedUserRecord = {
+          ...currentUser,
+          password: newPassword
+        };
+      } else {
+        const actualCurrentPassword = registeredUser.password ||
+          (registeredUser.role === 'Super Admin'
+            ? 'admin123'
+            : registeredUser.role === 'Operator'
+              ? 'operator123'
+              : 'pegawai123');
 
-      if (actualCurrentPassword !== oldPassword) {
-        setErrorMsg('Password lama yang Anda masukkan salah.');
-        return;
+        if (actualCurrentPassword !== oldPassword) {
+          setErrorMsg('Password lama yang Anda masukkan salah.');
+          return;
+        }
+
+        updatedUserRecord = {
+          ...registeredUser,
+          password: newPassword
+        };
       }
 
-      users[userIndex].password = newPassword;
-      saveRegisteredUsers(users);
+      await addOrUpdateUser(updatedUserRecord);
+      localStorage.setItem('scb_active_user', JSON.stringify(updatedUserRecord));
+      setSuccessMsg('Password berhasil diperbarui secara aman!');
+
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      console.error('Change password error:', err);
+      setErrorMsg('Gagal memperbarui password di server.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Update active user in storage
-    const updatedUserSession = { ...currentUser, password: newPassword };
-    localStorage.setItem('scb_active_user', JSON.stringify(updatedUserSession));
-
-    setSuccessMsg('Password berhasil diperbarui secara aman!');
-    
-    // Clear fields
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmNewPassword('');
   };
 
   // If already logged in, show user account profile & password management section!
@@ -535,11 +506,12 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 disabled:opacity-60 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
               id="btn-update-password"
             >
-              <RefreshCw className="w-4 h-4 animate-spin-slow" />
-              <span>Simpan Kunci Baru</span>
+              <RefreshCw className={`w-4 h-4 ${isSubmitting ? 'animate-spin' : 'animate-spin-slow'}`} />
+              <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Kunci Baru'}</span>
             </button>
           </form>
         </div>
@@ -667,10 +639,11 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 disabled:opacity-60 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
                 id="btn-submit-login"
               >
-                <span>Masuk Sekarang</span>
+                <span>{isSubmitting ? 'Memeriksa Akun...' : 'Masuk Sekarang'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -776,10 +749,11 @@ export default function AuthScreen({ onLoginSuccess, currentUser, onLogout }: Au
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-scb-green hover:bg-emerald-700 disabled:opacity-60 active:scale-[99%] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer mt-2"
                 id="btn-submit-register"
               >
-                <span>Daftar &amp; Masuk</span>
+                <span>{isSubmitting ? 'Mendaftarkan...' : 'Daftar & Masuk'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>

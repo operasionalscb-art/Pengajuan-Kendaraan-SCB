@@ -458,7 +458,12 @@ export default function BookingHistory({
 
                     <div className="text-[11px] space-y-1">
                       <p className="font-semibold text-neutral-600 dark:text-neutral-300"><span className="text-neutral-400 dark:text-neutral-500">PJ:</span> {b.penanggung_jawab} ({b.jabatan})</p>
-                      <p className="font-medium text-neutral-500 dark:text-neutral-450"><span className="text-neutral-400 dark:text-neutral-500">Tujuan:</span> {b.tujuan}</p>
+                      <p className="font-medium text-neutral-500 dark:text-neutral-450">
+                        <span className="text-neutral-400 dark:text-neutral-500">Tujuan:</span> {b.tujuan}
+                        {b.tujuan_kota_kabupaten && (
+                          <span className="text-neutral-400 dark:text-neutral-500"> ({b.tujuan_kota_kabupaten})</span>
+                        )}
+                      </p>
                     </div>
 
                     {/* Actions button blocks on Mobile */}
@@ -634,6 +639,11 @@ export default function BookingHistory({
                     <div>
                       <span className="text-[10px] uppercase font-bold text-neutral-400 dark:text-neutral-500 block">Lokasi Tujuan / Perjalanan</span>
                       <p className="text-sm font-bold text-neutral-800 dark:text-neutral-200 leading-snug mt-0.5">{selectedBooking.tujuan}</p>
+                      {selectedBooking.tujuan_kota_kabupaten && (
+                        <p className="text-xs font-semibold text-[#0F8A5F] dark:text-emerald-400 mt-0.5">
+                          Kota / Kabupaten: {selectedBooking.tujuan_kota_kabupaten}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
