@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Vehicle, Booking, BookingStatus, UserProfile } from '../types';
-import { checkBookingConflict, parseDateTime } from '../utils/bookingUtils';
+import { Vehicle, Booking, BookingStatus, UserProfile, TravelClassification } from '../types';
+import {
+  checkBookingConflict,
+  parseDateTime,
+  TRAVEL_CLASSIFICATIONS,
+  detectTravelClassification,
+} from '../utils/bookingUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Car, 
@@ -16,7 +21,8 @@ import {
   CalendarCheck2,
   BookmarkCheck,
   Check,
-  Building2
+  Building2,
+  Tag
 } from 'lucide-react';
 import DestinationAutocomplete from './DestinationAutocomplete';
 
@@ -58,6 +64,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
     }
   }, [currentUser]);
   const [kegiatan, setKegiatan] = useState('');
+  const [klasifikasiTujuan, setKlasifikasiTujuan] = useState<TravelClassification>('Lainnya');
+  const [isClassificationManual, setIsClassificationManual] = useState(false);
   const [tujuan, setTujuan] = useState('');
   const [tujuanKotaKabupaten, setTujuanKotaKabupaten] = useState('');
   const [tujuanPlaceId, setTujuanPlaceId] = useState<string | undefined>(undefined);
@@ -98,6 +106,8 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
       setJabatan('');
     }
     setKegiatan('');
+    setKlasifikasiTujuan('Lainnya');
+    setIsClassificationManual(false);
     setTujuan('');
     setTujuanKotaKabupaten('');
     setTujuanPlaceId(undefined);
@@ -263,6 +273,7 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
         penanggung_jawab: penanggungJawab.trim(),
         jabatan: jabatan.trim() || 'Pegawai SCB',
         kegiatan: kegiatan.trim(),
+        klasifikasi_tujuan: klasifikasiTujuan,
         tujuan: tujuan.trim(),
         tujuan_kota_kabupaten: tujuanKotaKabupaten.trim(),
         ...(tujuanPlaceId ? { tujuan_place_id: tujuanPlaceId } : {}),
@@ -450,13 +461,47 @@ export default function BookingForm({ vehicles, bookings, onSubmitBooking, onSuc
                 />
               </div>
 
-              <div className="space-y-1.5 col-span-1 md:col-span-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
+                  Klasifikasi Tujuan Perjalanan <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-neutral-400 pointer-events-none">
+                    <Tag className="w-4 h-4" />
+                  </span>
+                  <select
+                    value={klasifikasiTujuan}
+                    onChange={(e) => {
+                      setKlasifikasiTujuan(e.target.value as TravelClassification);
+                      setIsClassificationManual(true);
+                    }}
+                    className="w-full pl-9 pr-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-medium outline-none focus:border-[#0F8A5F] text-neutral-800 dark:text-neutral-100 cursor-pointer"
+                  >
+                    {TRAVEL_CLASSIFICATIONS.map((item) => (
+                      <option key={item} value={item} className="bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100">
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                  Terdeteksi otomatis dari kegiatan atau pilih manual (mis. Lomba, Berobat, Lainnya).
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">Nama / Deskripsi Kegiatan <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={kegiatan}
-                  onChange={(e) => setKegiatan(e.target.value)}
-                  placeholder="Contoh: Lomba Pramuka Penggalang Tingkat Kabupaten"
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setKegiatan(nextVal);
+                    if (!isClassificationManual) {
+                      setKlasifikasiTujuan(detectTravelClassification(nextVal));
+                    }
+                  }}
+                  placeholder="Contoh: Lomba Pramuka / Mengantar Siswa Berobat"
                   className="w-full px-4 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-sm outline-none focus:border-[#0F8A5F] text-neutral-800 dark:text-neutral-100"
                 />
               </div>

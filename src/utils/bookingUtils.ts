@@ -1,4 +1,60 @@
-import { Booking } from '../types';
+import { Booking, TravelClassification } from '../types';
+
+export const TRAVEL_CLASSIFICATIONS: TravelClassification[] = [
+  'Lomba',
+  'Berobat / Kesehatan',
+  'Dinas / Kunjungan',
+  'Rapat / Koordinasi',
+  'Logistik / Pengantaran',
+  'Kegiatan Siswa / Outing',
+  'Lainnya',
+];
+
+export const TRAVEL_CLASSIFICATION_COLORS: Record<TravelClassification, string> = {
+  'Lomba': '#0F8A5F',
+  'Berobat / Kesehatan': '#E11D48',
+  'Dinas / Kunjungan': '#2563EB',
+  'Rapat / Koordinasi': '#7C3AED',
+  'Logistik / Pengantaran': '#D97706',
+  'Kegiatan Siswa / Outing': '#0D9488',
+  'Lainnya': '#64748B',
+};
+
+export function detectTravelClassification(kegiatan: string): TravelClassification {
+  const text = (kegiatan || '').toLowerCase();
+  if (!text.trim()) return 'Lainnya';
+
+  if (/\b(berobat|sakit|rs|rsud|rsu|klinik|puskesmas|dokter|igd|ugd|kesehatan|medis|periksa|kontrol|gigi|mata|apotek|rawat|cek\s?kesehatan)\b/.test(text)) {
+    return 'Berobat / Kesehatan';
+  }
+  if (/\b(lomba|olimpiade|kompetisi|kejuaraan|turnamen|tanding|perlombaan|festival|piala|juara|osn|o2sn|fls2n|ksm|mtq|pospeda)\b/.test(text)) {
+    return 'Lomba';
+  }
+  if (/\b(rapat|koordinasi|rakor|rakornas|meeting|musyawarah|briefing|evaluasi|audit|keuangan|kurikulum)\b/.test(text)) {
+    return 'Rapat / Koordinasi';
+  }
+  if (/\b(donasi|logistik|barang|berkas|dokumen|sembako|buku|antar|pengantaran|jemput|penjemputan|ambil|pengambilan|kirim|pengiriman|sarpras|belanja|perlengkapan|inventaris)\b/.test(text)) {
+    return 'Logistik / Pengantaran';
+  }
+  if (/\b(dinas|kunjungan|silaturahmi|baznas|kementerian|tamu|undangan|sosialisasi|pelatihan|workshop|seminar|pusdiklat|monitoring|survei|survey|studi\s?banding)\b/.test(text)) {
+    return 'Dinas / Kunjungan';
+  }
+  if (/\b(pramuka|siswa|santri|ekskul|ekstrakurikuler|wisuda|kemah|outing|study\s?tour|ujian|pmb|ppdb|asrama|pesantren|tasmi|munaqosyah)\b/.test(text)) {
+    return 'Kegiatan Siswa / Outing';
+  }
+  return 'Lainnya';
+}
+
+export function classifyTravelPurpose(
+  kegiatan: string,
+  explicitClassification?: string
+): TravelClassification {
+  const cleaned = (explicitClassification || '').trim() as TravelClassification;
+  if (TRAVEL_CLASSIFICATIONS.includes(cleaned)) {
+    return cleaned;
+  }
+  return detectTravelClassification(kegiatan);
+}
 
 /**
  * Converts a date and time string into a millisecond timestamp

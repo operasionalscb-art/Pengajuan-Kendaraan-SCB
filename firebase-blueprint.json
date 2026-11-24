@@ -19,6 +19,7 @@
         "penanggung_jawab": "string",
         "jabatan": "string",
         "kegiatan": "string",
+        "klasifikasi_tujuan": "string (optional)",
         "tujuan": "string",
         "tujuan_kota_kabupaten": "string (optional)",
         "tujuan_place_id": "string (optional)",

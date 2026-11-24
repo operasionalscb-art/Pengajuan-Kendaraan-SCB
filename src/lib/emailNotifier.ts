@@ -1,5 +1,6 @@
 import { EmailNotificationLog, Booking, UserProfile } from '../types';
 import { addEmailLog } from './firebase';
+import { classifyTravelPurpose } from '../utils/bookingUtils';
 
 export async function sendOperatorEmailNotification({
   recipientEmail,
@@ -57,6 +58,7 @@ Terdapat PENGAJUAN PEMINJAMAN KENDARAAN OPERASIONAL BARU yang membutuhkan perset
 --- DETAIL PENGAJUAN ---
 • ID Peminjaman    : ${booking.id}
 • Penanggung Jawab : ${booking.penanggung_jawab} (${booking.jabatan})
+• Klasifikasi      : ${classifyTravelPurpose(booking.kegiatan, booking.klasifikasi_tujuan)}
 • Nama Kegiatan    : ${booking.kegiatan}
 • Kendaraan        : ${vehicleName || 'Kendaraan Operasional'}
 • Tanggal / Jam    : ${booking.tanggal_mulai} s.d ${booking.tanggal_selesai} | Pukul ${booking.jam_mulai} - ${booking.jam_selesai} WIB
@@ -82,6 +84,7 @@ Status peminjaman kendaraan operasional berikut telah diperbarui:
 
 --- RINGKASAN STATUS ---
 • ID Peminjaman     : ${booking.id}
+• Klasifikasi       : ${classifyTravelPurpose(booking.kegiatan, booking.klasifikasi_tujuan)}
 • Kegiatan          : ${booking.kegiatan}
 • Kendaraan         : ${vehicleName || 'Kendaraan Operasional'}
 • Status Terbaru    : ${newStatus.toUpperCase()}

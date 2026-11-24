@@ -1,5 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Booking, Vehicle } from '../types';
+import {
+  TRAVEL_CLASSIFICATIONS,
+  TRAVEL_CLASSIFICATION_COLORS,
+  classifyTravelPurpose,
+} from '../utils/bookingUtils';
 import { 
   BarChart, 
   Bar, 
@@ -20,7 +25,8 @@ import {
   Award, 
   Calendar, 
   MapPin,
-  Briefcase
+  Briefcase,
+  Tag
 } from 'lucide-react';
 
 interface ReportsViewProps {
@@ -95,25 +101,6 @@ function extractWilayah(tujuan: string): string {
   return withoutPostal || rawRegion;
 }
 
-function categorizeTujuanPenggunaan(kegiatan: string): string {
-  const text = (kegiatan || '').toLowerCase();
-  if (!text.trim()) return 'Operasional Lainnya';
-
-  if (/(lomba|pramuka|siswa|santri|ekskul|ekstrakurikuler|tanding|olimpiade|wisuda|kemah|outing|study\s?tour|ujian|pmb|ppdb|asrama)/.test(text)) {
-    return 'Kesiswaan & Lomba';
-  }
-  if (/(donasi|logistik|barang|berkas|dokumen|sembako|buku|antar|pengantaran|jemput|penjemputan|ambil|pengambilan|kirim|pengiriman|sarpras|belanja|perlengkapan|inventaris)/.test(text)) {
-    return 'Logistik & Pengantaran';
-  }
-  if (/(rapat|koordinasi|rakor|rakornas|meeting|musyawarah|briefing|evaluasi|audit|keuangan|kurikulum)/.test(text)) {
-    return 'Rapat & Koordinasi';
-  }
-  if (/(dinas|kunjungan|silaturahmi|baznas|kementerian|tamu|undangan|sosialisasi|pelatihan|workshop|seminar|pusdiklat|monitoring|survei|survey)/.test(text)) {
-    return 'Kedinasan & Kunjungan';
-  }
-  return 'Operasional Lainnya';
-}
-
 function truncateLabel(text: string, maxLength = 24): string {
   if (text.length <= maxLength) return text;
   return `${text.slice(0, maxLength - 1).trimEnd()}…`;
@@ -123,8 +110,9 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
   const [reportYear, setReportYear] = useState(2026);
   const [periodScope, setPeriodScope] = useState<'all' | 'year'>('all');
   const [vehicleFilter, setVehicleFilter] = useState<string>('all');
+  const [classificationFilter, setClassificationFilter] = useState<string>('all');
   const [locationMode, setLocationMode] = useState<'lokasi' | 'wilayah'>('lokasi');
-  const [purposeMode, setPurposeMode] = useState<'kategori' | 'kegiatan'>('kategori');
+  const [purposeMode, setPurposeMode] = useState<'donut' | 'batang' | 'kegiatan'>('donut');
 
   // Filter approved/completed bookings for reports to avoid including drafts or rejected runs
   const activeReportBookings = useMemo(
@@ -172,14 +160,16 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
     });
   }, [activeReportBookings, reportYear]);
 
-  // 4. Filtered dataset for Location & Purpose Analytics
+  // 4. Filtered dataset for Location & Classification Analytics
   const analyticsBookings = useMemo(() => {
     return activeReportBookings.filter(b => {
       const matchYear = periodScope === 'all' || Number(b.tanggal_mulai.split('-')[0]) === reportYear;
       const matchVehicle = vehicleFilter === 'all' || b.kendaraan_id === vehicleFilter;
-      return matchYear && matchVehicle;
+      const resolvedClass = classifyTravelPurpose(b.kegiatan, b.klasifikasi_tujuan);
+      const matchClass = classificationFilter === 'all' || resolvedClass === classificationFilter;
+      return matchYear && matchVehicle && matchClass;
     });
-  }, [activeReportBookings, periodScope, reportYear, vehicleFilter]);
+  }, [activeReportBookings, periodScope, reportYear, vehicleFilter, classificationFilter]);
 
   // 5. Location (tujuan) aggregation
   const locationDistribution = useMemo(() => {
@@ -216,15 +206,46 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
       }));
   }, [analyticsBookings, locationMode]);
 
-  // 6. Purpose (tujuan penggunaan / kegiatan) aggregation
+  // 6. Purpose / Travel Classification aggregation
   const purposeDistribution = useMemo(() => {
-    const map = new Map<string, { fullName: string; count: number; passengers: number }>();
+    const total = analyticsBookings.length || 1;
+    const isClassificationMode = purposeMode !== 'kegiatan';
 
+    if (isClassificationMode) {
+      const counts = new Map<string, { count: number; passengers: number }>();
+      TRAVEL_CLASSIFICATIONS.forEach((cls) => {
+        counts.set(cls, { count: 0, passengers: 0 });
+      });
+
+      analyticsBookings.forEach((b) => {
+        const cls = classifyTravelPurpose(b.kegiatan, b.klasifikasi_tujuan);
+        const entry = counts.get(cls) || { count: 0, passengers: 0 };
+        entry.count += 1;
+        entry.passengers += b.jumlah_penumpang || 0;
+        counts.set(cls, entry);
+      });
+
+      const list = TRAVEL_CLASSIFICATIONS
+        .filter((cls) => classificationFilter === 'all' || cls === classificationFilter)
+        .map((cls) => {
+          const entry = counts.get(cls) || { count: 0, passengers: 0 };
+          return {
+            name: truncateLabel(cls, 20),
+            fullName: cls,
+            count: entry.count,
+            passengers: entry.passengers,
+            percentage: analyticsBookings.length > 0 ? (entry.count / total) * 100 : 0,
+            color: TRAVEL_CLASSIFICATION_COLORS[cls],
+          };
+        })
+        .sort((a, b) => b.count - a.count || b.passengers - a.passengers);
+
+      return list;
+    }
+
+    const map = new Map<string, { fullName: string; count: number; passengers: number }>();
     analyticsBookings.forEach(b => {
-      const raw =
-        purposeMode === 'kategori'
-          ? categorizeTujuanPenggunaan(b.kegiatan)
-          : (b.kegiatan || '').trim() || 'Tidak Diketahui';
+      const raw = (b.kegiatan || '').trim() || 'Tidak Diketahui';
       const key = raw.toLowerCase();
       const existing = map.get(key);
       if (existing) {
@@ -239,35 +260,37 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
       }
     });
 
-    const total = analyticsBookings.length || 1;
+    const fallbackColors = ['#0F8A5F', '#2563EB', '#D97706', '#7C3AED', '#64748B', '#059669', '#DB2777'];
     return Array.from(map.values())
       .sort((a, b) => b.count - a.count || b.passengers - a.passengers)
-      .map(item => ({
-        name: truncateLabel(item.fullName, 26),
+      .map((item, idx) => ({
+        name: truncateLabel(item.fullName, 24),
         fullName: item.fullName,
         count: item.count,
         passengers: item.passengers,
-        percentage: (item.count / total) * 100
+        percentage: (item.count / total) * 100,
+        color: fallbackColors[idx % fallbackColors.length],
       }));
-  }, [analyticsBookings, purposeMode]);
+  }, [analyticsBookings, purposeMode, classificationFilter]);
 
   // Color palette for charts cells
   const COLORS = ['#0F8A5F', '#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#6B7280'];
-  const PURPOSE_COLORS = ['#0F8A5F', '#2563EB', '#D97706', '#7C3AED', '#64748B', '#059669', '#DB2777'];
 
   // Export to Excel / CSV client-side
   const downloadCSVReport = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID Booking,Kendaraan,Nomor Polisi,Penanggung Jawab,Jabatan,Kegiatan,Tujuan,Kota/Kabupaten,Tanggal Mulai,Jam Mulai,Tanggal Selesai,Jam Selesai,Jumlah Penumpang,Status\r\n";
+    csvContent += "ID Booking,Kendaraan,Nomor Polisi,Penanggung Jawab,Jabatan,Klasifikasi Tujuan,Kegiatan,Tujuan,Kota/Kabupaten,Tanggal Mulai,Jam Mulai,Tanggal Selesai,Jam Selesai,Jumlah Penumpang,Status\r\n";
     
     activeReportBookings.forEach((b) => {
       const v = vehicles.find(item => item.id === b.kendaraan_id);
+      const klasifikasi = classifyTravelPurpose(b.kegiatan, b.klasifikasi_tujuan);
       const row = [
         `="${b.id}"`,
         `"${v?.nama_kendaraan || 'Dihapus'}"`,
         `"${v?.nomor_polisi || ''}"`,
         `"${b.penanggung_jawab}"`,
         `"${b.jabatan}"`,
+        `"${klasifikasi.replace(/"/g, '""')}"`,
         `"${b.kegiatan.replace(/"/g, '""')}"`,
         `"${b.tujuan.replace(/"/g, '""')}"`,
         `"${(b.tujuan_kota_kabupaten || extractWilayah(b.tujuan)).replace(/"/g, '""')}"`,
@@ -296,7 +319,7 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
   };
 
   const topLocationsChartData = locationDistribution.slice(0, 8);
-  const topPurposeChartData = purposeDistribution.slice(0, 7);
+  const nonZeroPurposeChartData = purposeDistribution.filter(item => item.count > 0).slice(0, 7);
 
   return (
     <div className="space-y-6">
@@ -438,14 +461,14 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
           </div>
         </div>
 
-        {/* Row 2 Toolbar: Filter for Location & Usage Purpose Analytics */}
-        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Row 2 Toolbar: Filter for Location & Travel Classification Analytics */}
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h3 className="font-bold text-sm text-neutral-800 dark:text-neutral-100">
-              Analisis Lokasi &amp; Tujuan Penggunaan Kendaraan
+              Analisis Lokasi &amp; Klasifikasi Tujuan Perjalanan
             </h3>
             <p className="text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums mt-0.5">
-              {analyticsBookings.length} Sesi perjalanan · {locationDistribution.length} {locationMode === 'wilayah' ? 'Wilayah' : 'Lokasi tujuan'} · {purposeDistribution.length} {purposeMode === 'kategori' ? 'Kategori kegiatan' : 'Jenis kegiatan'}
+              {analyticsBookings.length} Sesi perjalanan · {locationDistribution.length} {locationMode === 'wilayah' ? 'Wilayah' : 'Lokasi tujuan'} · {nonZeroPurposeChartData.length} {purposeMode === 'kegiatan' ? 'Jenis kegiatan' : 'Klasifikasi aktif'}
             </p>
           </div>
 
@@ -480,13 +503,28 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
             <select
               value={vehicleFilter}
               onChange={(e) => setVehicleFilter(e.target.value)}
-              aria-label="Filter kendaraan untuk grafik lokasi dan tujuan"
+              aria-label="Filter kendaraan untuk grafik lokasi dan klasifikasi"
               className="px-3 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-xs font-semibold rounded-xl border border-transparent focus:border-[#0F8A5F] outline-none cursor-pointer"
             >
               <option value="all" className="bg-white dark:bg-neutral-800">Semua Armada</option>
               {vehicles.map(v => (
                 <option key={v.id} value={v.id} className="bg-white dark:bg-neutral-800">
                   {v.nama_kendaraan}
+                </option>
+              ))}
+            </select>
+
+            {/* Travel Classification selector */}
+            <select
+              value={classificationFilter}
+              onChange={(e) => setClassificationFilter(e.target.value)}
+              aria-label="Filter klasifikasi tujuan perjalanan"
+              className="px-3 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 text-xs font-semibold rounded-xl border border-transparent focus:border-[#0F8A5F] outline-none cursor-pointer"
+            >
+              <option value="all" className="bg-white dark:bg-neutral-800">Semua Klasifikasi</option>
+              {TRAVEL_CLASSIFICATIONS.map(cls => (
+                <option key={cls} value={cls} className="bg-white dark:bg-neutral-800">
+                  {cls}
                 </option>
               ))}
             </select>
@@ -601,33 +639,44 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
             )}
           </div>
 
-          {/* Chart 4: Grafik Tujuan Penggunaan Kendaraan */}
+          {/* Chart 4: Grafik Klasifikasi Tujuan Perjalanan */}
           <div className="bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 shadow-sm p-6 flex flex-col justify-between space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="flex items-start gap-2.5">
                 <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
-                  <Briefcase className="w-4 h-4" />
+                  <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-neutral-800 dark:text-neutral-100">Grafik Tujuan Penggunaan Kendaraan</h3>
+                  <h3 className="font-bold text-sm text-neutral-800 dark:text-neutral-100">Grafik Klasifikasi Tujuan Perjalanan</h3>
                   <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                    Proporsi peruntukan dan jenis kegiatan operasional
+                    Proporsi kategori perjalanan (Lomba, Berobat, Dinas, Lainnya)
                   </p>
                 </div>
               </div>
 
-              {/* Mode toggle: Kategori Penggunaan vs Detail Kegiatan */}
+              {/* Mode toggle: Donut Klasifikasi vs Batang Klasifikasi vs Detail Kegiatan */}
               <div className="inline-flex items-center p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg self-start shrink-0 print:hidden">
                 <button
                   type="button"
-                  onClick={() => setPurposeMode('kategori')}
+                  onClick={() => setPurposeMode('donut')}
                   className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    purposeMode === 'kategori'
+                    purposeMode === 'donut'
                       ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-xs'
                       : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                   }`}
                 >
-                  Kategori
+                  Donut
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPurposeMode('batang')}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                    purposeMode === 'batang'
+                      ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-xs'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                  }`}
+                >
+                  Batang
                 </button>
                 <button
                   type="button"
@@ -638,79 +687,111 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
                       : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
                   }`}
                 >
-                  Detail Kegiatan
+                  Detail
                 </button>
               </div>
             </div>
 
-            {topPurposeChartData.length > 0 ? (
+            {nonZeroPurposeChartData.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                  <div className="sm:col-span-5 h-56 flex items-center justify-center relative">
+                {purposeMode === 'batang' ? (
+                  <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={topPurposeChartData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={48}
-                          outerRadius={78}
-                          paddingAngle={3}
-                          dataKey="count"
-                        >
-                          {topPurposeChartData.map((_, index) => (
-                            <Cell key={`purpose-cell-${index}`} fill={PURPOSE_COLORS[index % PURPOSE_COLORS.length]} />
+                      <BarChart
+                        data={purposeDistribution}
+                        layout="vertical"
+                        margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" className="dark:stroke-neutral-800" />
+                        <XAxis type="number" fontSize={11} stroke="#9CA3AF" tickLine={false} allowDecimals={false} />
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          width={135}
+                          fontSize={11}
+                          stroke="#6B7280"
+                          tickLine={false}
+                        />
+                        <Tooltip
+                          content={<ChartTooltip unitLabel="Sesi" />}
+                          cursor={{ fill: 'rgba(15, 138, 95, 0.06)' }}
+                        />
+                        <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+                          {purposeDistribution.map((entry, index) => (
+                            <Cell key={`purpose-bar-cell-${index}`} fill={entry.color} />
                           ))}
-                        </Pie>
-                        <Tooltip content={<ChartTooltip unitLabel="Sesi" />} />
-                      </PieChart>
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-lg font-black text-neutral-800 dark:text-neutral-100 tabular-nums leading-none">
-                        {analyticsBookings.length}
-                      </span>
-                      <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mt-1">
-                        Total Sesi
-                      </span>
-                    </div>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                    <div className="sm:col-span-5 h-56 flex items-center justify-center relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={nonZeroPurposeChartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={48}
+                            outerRadius={78}
+                            paddingAngle={3}
+                            dataKey="count"
+                          >
+                            {nonZeroPurposeChartData.map((entry, index) => (
+                              <Cell key={`purpose-cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ChartTooltip unitLabel="Sesi" />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-lg font-black text-neutral-800 dark:text-neutral-100 tabular-nums leading-none">
+                          {analyticsBookings.length}
+                        </span>
+                        <span className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mt-1">
+                          Total Sesi
+                        </span>
+                      </div>
+                    </div>
 
-                  {/* Purpose Breakdown with Progress Bars */}
-                  <div className="sm:col-span-7 space-y-3 max-h-56 overflow-y-auto scrollbar-thin pr-1">
-                    {purposeDistribution.map((item, index) => {
-                      const barColor = PURPOSE_COLORS[index % PURPOSE_COLORS.length];
-                      return (
-                        <div key={`${item.fullName}-${idxKey(index)}`} className="space-y-1">
-                          <div className="flex items-center justify-between gap-2 text-xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: barColor }}
-                              />
-                              <span className="truncate font-semibold text-neutral-700 dark:text-neutral-200" title={item.fullName}>
-                                {item.fullName}
+                    {/* Classification Breakdown with Progress Bars */}
+                    <div className="sm:col-span-7 space-y-2.5 max-h-56 overflow-y-auto scrollbar-thin pr-1">
+                      {purposeDistribution.map((item, index) => {
+                        const isEmpty = item.count === 0;
+                        return (
+                          <div key={`${item.fullName}-${idxKey(index)}`} className={`space-y-1 ${isEmpty ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: item.color }}
+                                />
+                                <span className="truncate font-semibold text-neutral-700 dark:text-neutral-200" title={item.fullName}>
+                                  {item.fullName}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-bold text-neutral-800 dark:text-neutral-100 shrink-0 tabular-nums">
+                                {item.count} Sesi · {item.percentage.toFixed(0)}%
                               </span>
                             </div>
-                            <span className="text-[11px] font-bold text-neutral-800 dark:text-neutral-100 shrink-0 tabular-nums">
-                              {item.count} Sesi · {item.percentage.toFixed(0)}%
-                            </span>
+                            <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{ width: `${item.count > 0 ? Math.max(item.percentage, 4) : 0}%`, backgroundColor: item.color }}
+                              />
+                            </div>
                           </div>
-                          <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-300"
-                              style={{ width: `${Math.max(item.percentage, 4)}%`, backgroundColor: barColor }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Footer summary metadata */}
                 <div className="border-t border-neutral-100 dark:border-neutral-800 pt-3 flex items-center justify-between text-[11px] text-neutral-500 dark:text-neutral-400 tabular-nums">
                   <span>
-                    Dominan: <strong className="text-neutral-800 dark:text-neutral-200">{purposeDistribution[0]?.fullName}</strong>
+                    Dominan: <strong className="text-neutral-800 dark:text-neutral-200">{nonZeroPurposeChartData[0]?.fullName}</strong>
                   </span>
                   <span>
                     {analyticsBookings.reduce((sum, b) => sum + (b.jumlah_penumpang || 0), 0)} Total Penumpang
@@ -720,7 +801,7 @@ export default function ReportsView({ bookings, vehicles }: ReportsViewProps) {
             ) : (
               <div className="h-64 flex flex-col items-center justify-center text-center px-4 border border-dashed border-neutral-200 dark:border-neutral-800 rounded-xl">
                 <Briefcase className="w-7 h-7 text-neutral-300 dark:text-neutral-600 mb-2" />
-                <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Belum ada data tujuan penggunaan</p>
+                <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">Belum ada data klasifikasi perjalanan</p>
                 <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
                   Data akan muncul setelah ada peminjaman berstatus Disetujui atau Selesai pada filter yang dipilih.
                 </p>

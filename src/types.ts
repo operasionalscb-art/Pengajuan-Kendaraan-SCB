@@ -12,6 +12,15 @@ export interface Vehicle {
 
 export type BookingStatus = 'Draft' | 'Menunggu Persetujuan' | 'Disetujui' | 'Ditolak' | 'Selesai';
 
+export type TravelClassification =
+  | 'Lomba'
+  | 'Berobat / Kesehatan'
+  | 'Dinas / Kunjungan'
+  | 'Rapat / Koordinasi'
+  | 'Logistik / Pengantaran'
+  | 'Kegiatan Siswa / Outing'
+  | 'Lainnya';
+
 export interface Booking {
   id: string;
   kendaraan_id: string;
@@ -22,6 +31,7 @@ export interface Booking {
   penanggung_jawab: string;
   jabatan: string;
   kegiatan: string;
+  klasifikasi_tujuan?: TravelClassification;
   tujuan: string;
   tujuan_kota_kabupaten?: string;
   jumlah_penumpang: number;

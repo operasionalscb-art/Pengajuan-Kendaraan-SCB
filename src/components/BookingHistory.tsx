@@ -16,9 +16,10 @@ import {
   CheckCircle2, 
   RefreshCcw, 
   Download,
-  AlertTriangle
+  AlertTriangle,
+  Tag
 } from 'lucide-react';
-import { checkBookingConflict, getHariIndonesian } from '../utils/bookingUtils';
+import { checkBookingConflict, getHariIndonesian, classifyTravelPurpose } from '../utils/bookingUtils';
 
 interface BookingHistoryProps {
   bookings: Booking[];
@@ -71,11 +72,13 @@ export default function BookingHistory({
   const filteredBookings = bookings.filter((b) => {
     const vehicle = vehicles.find((v) => v.id === b.kendaraan_id);
     
-    // Search by vehicle name, plate, penanggung jawab, or kegiatan
+    // Search by vehicle name, plate, penanggung jawab, kegiatan, or classification
     const query = searchQuery.toLowerCase().trim();
+    const resolvedClassification = classifyTravelPurpose(b.kegiatan, b.klasifikasi_tujuan).toLowerCase();
     const matchesSearch = !query || 
       b.penanggung_jawab.toLowerCase().includes(query) ||
       b.kegiatan.toLowerCase().includes(query) ||
+      resolvedClassification.includes(query) ||
       b.tujuan.toLowerCase().includes(query) ||
       vehicle?.nama_kendaraan.toLowerCase().includes(query) ||
       vehicle?.nomor_polisi.toLowerCase().includes(query);
@@ -579,8 +582,12 @@ export default function BookingHistory({
             <div className="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-lg border border-neutral-100 dark:border-neutral-800 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
               <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-start justify-between bg-gradient-to-r from-neutral-50 to-white dark:from-neutral-850 dark:to-neutral-900">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {getStatusBadge(selectedBooking.status)}
+                    <span className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 font-bold py-0.5 px-2 rounded-full border border-blue-200 dark:border-blue-800/40 inline-flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      {classifyTravelPurpose(selectedBooking.kegiatan, selectedBooking.klasifikasi_tujuan)}
+                    </span>
                     <span className="text-xs text-neutral-400 dark:text-neutral-500 font-mono font-medium">{selectedBooking.id}</span>
                   </div>
                   <h4 className="font-bold text-lg text-neutral-800 dark:text-neutral-100 tracking-tight leading-snug mt-1.5">{selectedBooking.kegiatan}</h4>
